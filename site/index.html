@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="th"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#22183a"><meta name="description" content="สมัครแข่งขัน RESTART RACHA ISLAND HYBRID 7–8 พฤศจิกายน 2569">
+  <title>สมัครแข่งขัน · RESTART RACHA ISLAND HYBRID</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="config.js"></script><script defer src="app.js"></script>
+</head><body>
+  <header class="site-header wrap">
+    <a class="brand" href="./" aria-label="RESTART RACHA ISLAND HYBRID"><span class="brand-mark">R</span><span>RESTART <small>RACHA ISLAND HYBRID</small></span></a>
+    <label class="language"><span class="sr-only">Language</span><select id="language"><option value="th">ไทย</option><option value="en">English</option><option value="zh">中文</option><option value="ru">Русский</option><option value="ja">日本語</option></select></label>
+  </header>
+  <main class="wrap">
+    <section class="hero"><div class="hero-copy"><span class="eyebrow">ISLAND ADVENTURE HYBRID EVENT</span>
+      <h1>RESTART <em>RACHA ISLAND</em> HYBRID</h1>
+      <p>SWIM 350 M. <span>·</span> TRAIL 6.5 KM. <span>·</span> OBSTACLE 8 STATIONS</p>
+      <div class="hero-meta"><span>07—08 NOV 2026</span><span>RACHA ISLAND · PHUKET</span></div>
+    </div><img id="poster" class="poster hidden" alt="RESTART RACHA ISLAND HYBRID poster"></section>
+    <div id="globalMessage" class="alert hidden" role="status"></div>
+    <nav class="tabs" aria-label="Registration menu"><button type="button" class="tab active" id="tabRegister" data-i18n="register">สมัครแข่งขัน</button><button type="button" class="tab" id="tabPay" data-i18n="payNext">ชำระงวดถัดไป</button></nav>
+
+    <section id="registerView" class="layout">
+      <form id="registrationForm" class="stack" novalidate>
+        <section class="panel"><div class="section-heading"><b>01</b><div><h2 data-i18n="choosePackage">เลือกแพ็กเกจ</h2><p data-i18n="packageHint">ราคานี้เป็นยอดรวมของทั้งแพ็กเกจ</p></div></div>
+          <div id="packages" class="package-grid"></div></section>
+        <section class="panel"><div class="section-heading"><b>02</b><div><h2 data-i18n="participants">ข้อมูลผู้แข่งขัน</h2><p data-i18n="participantHint">ระบุข้อมูลตามจำนวนคนในแพ็กเกจ</p></div></div>
+          <div id="runners" class="stack"></div><div id="followers" class="stack"></div></section>
+        <section class="panel"><div class="section-heading"><b>03</b><div><h2 data-i18n="beneficiaries">ผู้รับผลประโยชน์</h2><p data-i18n="beneficiaryHint">ของแต่ละผู้แข่งขันต้องรวม 100%</p></div></div>
+          <div id="beneficiaryGroups" class="stack"></div></section>
+        <section class="panel"><div class="section-heading"><b>04</b><div><h2 data-i18n="payment">ชำระเงิน</h2><p data-i18n="paymentHint">เลือกจ่ายเต็มหรือผ่อน 3 งวด</p></div></div>
+          <div class="choice-row"><label><input type="radio" name="payment_plan" value="FULL" checked><span data-i18n="full">ชำระเต็ม</span></label><label id="installmentChoice"><input type="radio" name="payment_plan" value="INSTALLMENT"><span data-i18n="installments">ผ่อน 3 งวด</span></label></div>
+          <div id="paymentSchedule" class="schedule"></div>
+          <label class="field"><span data-i18n="slip">แนบสลิปชำระเงิน</span><input id="firstSlip" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label>
+          <label class="consent"><input id="consent" type="checkbox" required><span data-i18n="consent">ฉันยินยอมให้ใช้ข้อมูลนี้เพื่อการสมัครและจัดการแข่งขัน</span></label>
+          <button id="submitRegistration" class="primary" type="submit" data-i18n="sendApplication">ส่งใบสมัคร</button>
+          <p id="formMessage" class="feedback" role="status"></p>
+        </section>
+      </form>
+      <aside class="aside"><div id="paymentBox" class="panel payment-box"><span class="eyebrow" data-i18n="paymentDetails">ข้อมูลชำระเงิน</span><h2 id="dueAmount">—</h2>
+        <div id="bankBlock" class="pay-method hidden"><small data-i18n="bank">ธนาคาร</small><strong id="bankName"></strong><span id="accountName"></span><div class="copy-line"><code id="accountNumber"></code><button type="button" id="copyAccount" data-i18n="copy">คัดลอก</button></div></div>
+        <div id="promptpayBlock" class="pay-method hidden"><small>PromptPay</small><strong id="promptpayName"></strong><div class="copy-line"><code id="promptpayNumber"></code><button type="button" id="copyPromptpay" data-i18n="copy">คัดลอก</button></div></div>
+        <p class="muted" data-i18n="slipCheck">โอนตามยอดที่แสดง และแนบหลักฐานให้เจ้าหน้าที่ตรวจสอบ</p></div></aside>
+    </section>
+
+    <section id="payView" class="layout hidden"><div class="stack">
+      <section class="panel"><div class="section-heading"><b>01</b><div><h2 data-i18n="findApplication">ค้นหาใบสมัครเดิม</h2><p data-i18n="findHint">ใช้เลขบัตรหรือ Passport ของผู้แข่งขันคนใดก็ได้</p></div></div>
+        <form id="lookupForm" class="form-grid"><label class="field"><span data-i18n="idDocument">เลขบัตรประชาชน / Passport</span><input id="lookupId" autocomplete="off" required></label>
+          <label class="field"><span data-i18n="accessCode">รหัสยืนยันจากใบสมัคร</span><input id="lookupCode" autocomplete="off" required></label><button class="primary span-all" type="submit" data-i18n="search">ค้นหา</button></form>
+        <p id="lookupMessage" class="feedback" role="status"></p></section>
+      <section id="lookupResult" class="panel hidden"><h2 id="registrationName"></h2><p id="registrationSummary" class="muted"></p>
+        <div id="installmentList" class="schedule"></div><form id="nextPaymentForm" class="hidden"><h3 id="nextPaymentTitle"></h3>
+          <label class="field"><span data-i18n="slip">แนบสลิปชำระเงิน</span><input id="nextSlip" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label>
+          <button id="submitPayment" class="primary" type="submit" data-i18n="submitSlip">ส่งหลักฐานการชำระ</button><p id="paymentMessage" class="feedback" role="status"></p></form>
+      </section></div><aside class="aside"><div class="panel help-panel"><h3 data-i18n="lostCode">หารหัสยืนยันไม่พบ?</h3><p data-i18n="lostCodeHint">รหัสแสดงเมื่อสมัครสำเร็จ หากสูญหายให้ติดต่อเจ้าหน้าที่งานเพื่อยืนยันตัวตนและรับรหัสใหม่</p></div></aside>
+    </section>
+  </main>
+  <footer class="wrap footer"><span>RESTART RACHA ISLAND HYBRID · 2026</span><a href="admin.html" data-i18n="admin">สำหรับเจ้าหน้าที่</a></footer>
+</body></html>

@@ -1,0 +1,2 @@
+[functions.registration-api]
+verify_jwt = false # Public registration; admin routes verify the user's JWT in code.
