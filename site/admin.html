@@ -1,12 +1,13 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#22183a"><title>แอดมิน · RESTART RACHA ISLAND HYBRID</title>
   <link rel="stylesheet" href="style.css"><script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
-  <script defer src="config.js"></script><script defer src="admin.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"></script>
+  <script defer src="alerts.js"></script><script defer src="config.js"></script><script defer src="admin.js"></script>
 </head><body>
   <header class="site-header wrap"><a class="brand" href="./"><span class="brand-mark">R</span><span>RESTART <small>REGISTRATION ADMIN</small></span></a><div class="inline-actions"><a class="small-button" href="./">หน้าสมัคร</a><button id="signOut" class="small-button hidden" type="button">ออกจากระบบ</button></div></header>
   <main class="wrap"><div id="adminMessage" class="alert hidden" role="status"></div>
     <section id="loginSection" class="panel" style="max-width:440px;margin:45px auto"><h1>เข้าสู่ระบบเจ้าหน้าที่</h1><p class="muted">ใช้บัญชีที่ได้รับสิทธิ์จัดการงานนี้</p>
-      <form id="loginForm" class="stack"><label class="field"><span>อีเมล</span><input id="adminEmail" type="email" autocomplete="username" required></label>
+      <form id="loginForm" class="stack" novalidate><label class="field"><span>อีเมล</span><input id="adminEmail" type="email" autocomplete="username" required></label>
         <label class="field"><span>รหัสผ่าน</span><input id="adminPassword" type="password" autocomplete="current-password" required></label>
         <button class="primary" type="submit">เข้าสู่ระบบ</button><p id="loginMessage" class="feedback" role="status"></p></form></section>
     <section id="dashboard" class="hidden"><div class="section-heading"><b>ADMIN</b><div><h1 style="margin:0">ติดตามการสมัครและการชำระ</h1><p class="muted">RESTART RACHA ISLAND HYBRID</p></div></div>
@@ -19,11 +20,17 @@
           <div class="table-wrap"><table class="data-table"><thead><tr><th>ผู้แข่งขัน / เอกสาร</th><th>แพ็กเกจ</th><th>งวด 1</th><th>งวด 2</th><th>งวด 3</th><th>จ่ายแล้ว / คงเหลือ</th><th>ตรวจสลิป</th></tr></thead><tbody id="registrationRows"></tbody></table></div>
           <p id="resultCount" class="muted"></p></section>
         <section id="packagesPage" class="panel hidden"><h2>ตั้งค่าแพ็กเกจ</h2><p class="muted">แก้ราคาสำหรับผู้สมัครใหม่ ราคาของใบสมัครเดิมจะคงเดิม</p><div id="packageForms" class="stack"></div></section>
-        <section id="settingsPage" class="panel hidden"><h2>ตั้งค่ารับสมัครและชำระเงิน</h2><form id="settingsForm" class="admin-form">
+        <section id="settingsPage" class="panel hidden"><h2>กำหนดเวลาเปิด/ปิดรับสมัคร</h2>
+          <p class="muted">ใช้เวลาไทย (Asia/Bangkok) การเปลี่ยนเวลามีผลทันทีเมื่อบันทึก ผู้สมัครที่เปิดหน้าเดิมจะได้รับสถานะใหม่ภายในหนึ่งนาที</p>
+          <form id="scheduleForm" class="admin-form" novalidate>
+            <label class="field"><span>เปิดรับสมัคร (เวลาไทย)</span><input name="registration_opens_at" type="datetime-local" required></label>
+            <label class="field"><span>ปิดรับสมัคร (เว้นว่างได้)</span><input name="registration_closes_at" type="datetime-local"></label>
+            <button class="primary" type="submit">บันทึกเวลาเปิด/ปิดรับสมัคร</button>
+          </form>
+          <h2 style="margin-top:32px">ข้อมูลรับชำระและกำหนดชำระ</h2><form id="settingsForm" class="admin-form" novalidate>
           <label class="field"><span>ธนาคาร</span><input name="bank_name"></label><label class="field"><span>ชื่อบัญชี</span><input name="account_name"></label>
           <label class="field"><span>เลขบัญชี</span><input name="account_number"></label><label class="field"><span>ชื่อ PromptPay</span><input name="promptpay_name"></label>
           <label class="field"><span>หมายเลข PromptPay</span><input name="promptpay_number"></label><label class="field"><span>URL โปสเตอร์</span><input name="poster_url" type="url"></label>
-          <label class="field"><span>เปิดรับสมัคร (เวลาไทย)</span><input name="registration_opens_at" type="datetime-local" required></label><label class="field"><span>ปิดรับสมัคร (เว้นว่างได้)</span><input name="registration_closes_at" type="datetime-local"></label>
           <label class="field"><span>งวด 2 ครบกำหนด (เวลาไทย)</span><input name="installment_2_due_at" type="datetime-local" required></label><label class="field"><span>งวด 3 ครบกำหนด (เวลาไทย)</span><input name="installment_3_due_at" type="datetime-local" required></label>
           <label class="field"><span>มัดจำงวด 1 (บาท)</span><input name="deposit_thb" type="number" min="1" required></label><label class="field"><span>งวด 2 (บาท)</span><input name="second_thb" type="number" min="1" required></label>
           <label class="field"><span>ขนาดสลิปสูงสุด (MB)</span><input name="max_slip_mb" type="number" min="1" max="10" required></label>

@@ -4,7 +4,8 @@
   <meta name="theme-color" content="#22183a"><meta name="description" content="สมัครแข่งขัน RESTART RACHA ISLAND HYBRID 7–8 พฤศจิกายน 2569">
   <title>สมัครแข่งขัน · RESTART RACHA ISLAND HYBRID</title>
   <link rel="stylesheet" href="style.css">
-  <script defer src="config.js"></script><script defer src="app.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"></script>
+  <script defer src="alerts.js"></script><script defer src="config.js"></script><script defer src="app.js"></script>
 </head><body>
   <header class="site-header wrap">
     <a class="brand" href="./" aria-label="RESTART RACHA ISLAND HYBRID"><span class="brand-mark">R</span><span>RESTART <small>RACHA ISLAND HYBRID</small></span></a>
@@ -44,11 +45,11 @@
 
     <section id="payView" class="layout hidden"><div class="stack">
       <section class="panel"><div class="section-heading"><b>01</b><div><h2 data-i18n="findApplication">ค้นหาใบสมัครเดิม</h2><p data-i18n="findHint">ใช้เลขบัตรหรือ Passport ของผู้แข่งขันคนใดก็ได้</p></div></div>
-        <form id="lookupForm" class="form-grid"><label class="field"><span data-i18n="idDocument">เลขบัตรประชาชน / Passport</span><input id="lookupId" autocomplete="off" required></label>
+        <form id="lookupForm" class="form-grid" novalidate><label class="field"><span data-i18n="idDocument">เลขบัตรประชาชน / Passport</span><input id="lookupId" autocomplete="off" required></label>
           <label class="field"><span data-i18n="accessCode">รหัสยืนยันจากใบสมัคร</span><input id="lookupCode" autocomplete="off" required></label><button class="primary span-all" type="submit" data-i18n="search">ค้นหา</button></form>
         <p id="lookupMessage" class="feedback" role="status"></p></section>
       <section id="lookupResult" class="panel hidden"><h2 id="registrationName"></h2><p id="registrationSummary" class="muted"></p>
-        <div id="installmentList" class="schedule"></div><form id="nextPaymentForm" class="hidden"><h3 id="nextPaymentTitle"></h3>
+        <div id="installmentList" class="schedule"></div><form id="nextPaymentForm" class="hidden" novalidate><h3 id="nextPaymentTitle"></h3>
           <label class="field"><span data-i18n="slip">แนบสลิปชำระเงิน</span><input id="nextSlip" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label>
           <button id="submitPayment" class="primary" type="submit" data-i18n="submitSlip">ส่งหลักฐานการชำระ</button><p id="paymentMessage" class="feedback" role="status"></p></form>
       </section></div><aside class="aside"><div class="panel help-panel"><h3 data-i18n="lostCode">หารหัสยืนยันไม่พบ?</h3><p data-i18n="lostCodeHint">รหัสแสดงเมื่อสมัครสำเร็จ หากสูญหายให้ติดต่อเจ้าหน้าที่งานเพื่อยืนยันตัวตนและรับรหัสใหม่</p></div></aside>

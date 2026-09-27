@@ -5,8 +5,19 @@
     c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
   const money = value => `${Number(value || 0).toLocaleString('th-TH')} ฿`;
   const cfg = window.RRIH_CONFIG;
+  const alerts = window.RRIHAlerts;
   let client, snapshot, currentUser;
-  function showMessage(message) { $('#adminMessage').textContent = message; $('#adminMessage').classList.toggle('hidden', !message); }
+  function showMessage(message, icon = 'error') {
+    if (message) alerts.notice(icon, icon === 'success' ? 'สำเร็จ' : 'แจ้งเตือน', message);
+  }
+  async function validForm(form) {
+    const invalid = [...form.querySelectorAll('input,select,textarea')].find(el =>
+      !el.validity.valid || (el.required && !el.value.trim()));
+    if (!invalid) return true;
+    const name = invalid.closest('label')?.querySelector('span')?.textContent || 'ข้อมูลที่จำเป็น';
+    await alerts.notice('warning', 'กรุณากรอกข้อมูลให้ครบ', name);
+    invalid.focus(); return false;
+  }
   function asBkkInput(value) {
     if (!value) return '';
     const parts = new Intl.DateTimeFormat('sv-SE', { timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23' }).format(new Date(value));
@@ -80,7 +91,7 @@
   }
   function renderPackages() {
     $('#packageForms').innerHTML = (snapshot.packages || []).map(p =>
-      `<form class="person-card package-form" data-code="${escape(p.code)}"><h3>${escape(p.code)}</h3><div class="admin-form">
+      `<form class="person-card package-form" data-code="${escape(p.code)}" novalidate><h3>${escape(p.code)}</h3><div class="admin-form">
         ${['th','en','zh','ru','ja'].map(l => `<label class="field"><span>ชื่อ ${l}</span><input name="name_${l}" value="${escape(p[`name_${l}`] || '')}" ${l === 'th' ? 'required' : ''}></label>`).join('')}
         <label class="field"><span>ราคา (บาท)</span><input name="price_thb" type="number" min="5000" value="${p.price_thb}" required></label>
         <label class="field"><span>ผู้แข่งขัน</span><input name="runner_count" type="number" min="1" max="2" value="${p.runner_count}" required></label>
@@ -94,13 +105,13 @@
       </div></form>`).join('');
   }
   function renderSettings() {
-    const form = $('#settingsForm'), s = snapshot.settings;
+    const form = $('#settingsForm'), schedule = $('#scheduleForm'), s = snapshot.settings;
     for (const name of ['bank_name','account_name','account_number','promptpay_name','promptpay_number','poster_url',
       'deposit_thb','second_thb','max_slip_mb']) form.elements[name].value = s[name] ?? '';
-    for (const name of ['registration_opens_at','registration_closes_at','installment_2_due_at','installment_3_due_at'])
-      form.elements[name].value = asBkkInput(s[name]);
-    [...form.elements].forEach(el => { if (el.tagName !== 'BUTTON') el.disabled = snapshot.role !== 'ADMIN'; });
-    form.querySelector('button').disabled = snapshot.role !== 'ADMIN';
+    for (const name of ['installment_2_due_at','installment_3_due_at']) form.elements[name].value = asBkkInput(s[name]);
+    for (const name of ['registration_opens_at','registration_closes_at']) schedule.elements[name].value = asBkkInput(s[name]);
+    for (const current of [form, schedule])
+      [...current.elements].forEach(el => { el.disabled = snapshot.role !== 'ADMIN'; });
   }
   async function init() {
     if (!cfg?.SUPABASE_URL || !cfg?.PUBLISHABLE_KEY) { showMessage('ยังไม่ได้ตั้งค่า URL และ Publishable Key ของ Supabase โปรเจกต์งานสมัคร'); return; }
@@ -110,14 +121,15 @@
     if (data.session) { currentUser = data.session.user; try { await load(); } catch (err) { showMessage(err.message); } }
   }
   $('#loginForm').addEventListener('submit', async event => {
-    event.preventDefault(); if (!client) return;
+    event.preventDefault(); if (!client || !await validForm(event.currentTarget)) return;
     const button = event.currentTarget.querySelector('button'); button.disabled = true;
     try {
+      alerts.loading('กำลังเข้าสู่ระบบ…');
       const { data, error } = await client.auth.signInWithPassword({ email: $('#adminEmail').value,
         password: $('#adminPassword').value });
       if (error) throw error;
-      currentUser = data.user; $('#adminPassword').value = ''; await load();
-    } catch (err) { $('#loginMessage').textContent = err.message; button.disabled = false; }
+      currentUser = data.user; $('#adminPassword').value = ''; await load(); alerts.close();
+    } catch (err) { alerts.close(); showMessage(err.message); button.disabled = false; }
   });
   $('#signOut').addEventListener('click', async () => { await client.auth.signOut(); location.reload(); });
   document.querySelectorAll('.admin-nav button').forEach(button => button.addEventListener('click', () => {
@@ -138,19 +150,31 @@
       }
       if (review) {
         const approve = review.dataset.approve === 'true';
-        const note = approve ? '' : prompt('เหตุผลที่ปฏิเสธสลิป (จะแสดงให้เจ้าหน้าที่ดู)', '') || '';
-        if (!approve && !note.trim()) return;
-        if (!confirm(approve ? 'ยืนยันว่าตรวจยอดเงินเข้าแล้วและอนุมัติสลิปนี้?' : 'ยืนยันปฏิเสธสลิปนี้?')) return;
+        let note = '';
+        if (approve) {
+          const choice = await alerts.fire({ icon:'question', title:'อนุมัติสลิปนี้?',
+            text:'โปรดตรวจยอดเงินเข้าในบัญชีจริงก่อนอนุมัติ', showCancelButton:true,
+            confirmButtonText:'อนุมัติ', cancelButtonText:'ยกเลิก' });
+          if (!choice.isConfirmed) return;
+        } else {
+          const choice = await alerts.fire({ icon:'warning', title:'ปฏิเสธสลิปนี้?', input:'textarea',
+            inputLabel:'เหตุผลที่ปฏิเสธ', inputValidator:value => !value?.trim() ? 'กรุณาระบุเหตุผล' : undefined,
+            showCancelButton:true, confirmButtonText:'ปฏิเสธ', cancelButtonText:'ยกเลิก' });
+          if (!choice.isConfirmed) return;
+          note = choice.value.trim();
+        }
         review.disabled = true;
+        alerts.loading('กำลังบันทึกผลตรวจ…');
         await api('admin-review', { attempt_id: review.dataset.review, approve, note });
-        await load(); showMessage(approve ? 'อนุมัติสลิปแล้ว' : 'ปฏิเสธสลิปแล้ว');
+        await load(); alerts.close(); showMessage(approve ? 'อนุมัติสลิปแล้ว' : 'ปฏิเสธสลิปแล้ว', 'success');
       }
-    } catch (err) { showMessage(err.message); if (review) review.disabled = false; }
+    } catch (err) { alerts.close(); showMessage(err.message); if (review) review.disabled = false; }
   });
   $('#closeModal').addEventListener('click', () => { $('#slipModal').classList.add('hidden'); $('#slipContent').replaceChildren(); });
   $('#slipModal').addEventListener('click', event => { if (event.target.id === 'slipModal') $('#closeModal').click(); });
   $('#packageForms').addEventListener('submit', async event => {
     const form = event.target.closest('.package-form'); if (!form) return; event.preventDefault();
+    if (!await validForm(form)) return;
     const value = name => form.elements[name].value.trim();
     const body = { code: form.dataset.code, price_thb: Number(value('price_thb')),
       runner_count: Number(value('runner_count')), follower_count: Number(value('follower_count')),
@@ -158,18 +182,33 @@
       active: form.elements.active.checked, breakfast: form.elements.breakfast.checked,
       after_party: form.elements.after_party.checked };
     for (const l of ['th','en','zh','ru','ja']) body[`name_${l}`] = value(`name_${l}`);
-    try { await api('admin-package', body); await load(); showMessage('บันทึกแพ็กเกจแล้ว'); }
-    catch (err) { showMessage(err.message); }
+    try { alerts.loading('กำลังบันทึกแพ็กเกจ…'); await api('admin-package', body); await load(); alerts.close(); showMessage('บันทึกแพ็กเกจแล้ว', 'success'); }
+    catch (err) { alerts.close(); showMessage(err.message); }
+  });
+  $('#scheduleForm').addEventListener('submit', async event => {
+    event.preventDefault(); const form = event.currentTarget;
+    if (!await validForm(form)) return;
+    const opens = toIso(form.elements.registration_opens_at.value);
+    const closes = toIso(form.elements.registration_closes_at.value);
+    if (closes && Date.parse(closes) <= Date.parse(opens)) {
+      await alerts.notice('warning', 'เวลาปิดไม่ถูกต้อง', 'เวลาปิดรับสมัครต้องหลังเวลาเปิดรับสมัคร'); return;
+    }
+    try {
+      alerts.loading('กำลังบันทึกเวลาเปิด/ปิด…');
+      await api('admin-settings', { registration_opens_at: opens, registration_closes_at: closes });
+      await load(); alerts.close(); showMessage('เวลาเปิด/ปิดรับสมัครมีผลแล้ว', 'success');
+    } catch (err) { alerts.close(); showMessage(err.message); }
   });
   $('#settingsForm').addEventListener('submit', async event => {
     event.preventDefault(); const form = event.currentTarget, body = {};
+    if (!await validForm(form)) return;
     for (const name of ['bank_name','account_name','account_number','promptpay_name','promptpay_number','poster_url'])
       body[name] = form.elements[name].value.trim();
-    for (const name of ['registration_opens_at','registration_closes_at','installment_2_due_at','installment_3_due_at'])
+    for (const name of ['installment_2_due_at','installment_3_due_at'])
       body[name] = toIso(form.elements[name].value);
     for (const name of ['deposit_thb','second_thb','max_slip_mb']) body[name] = Number(form.elements[name].value);
-    try { await api('admin-settings', body); await load(); showMessage('บันทึกการตั้งค่าแล้ว'); }
-    catch (err) { showMessage(err.message); }
+    try { alerts.loading('กำลังบันทึกการตั้งค่า…'); await api('admin-settings', body); await load(); alerts.close(); showMessage('บันทึกการตั้งค่าแล้ว', 'success'); }
+    catch (err) { alerts.close(); showMessage(err.message); }
   });
   init();
 })();

@@ -88,7 +88,7 @@ function validateRegistration(data: Record<string, unknown>, packageRow: Record<
   if (ids.some(id => id.length < 5 || id.length > 30) || new Set(ids).size !== ids.length)
     fail(400, 'เลขบัตรหรือ Passport ผู้แข่งขันไม่ถูกต้องหรือซ้ำกัน');
   for (const r of runners) {
-    if (!text(r.first_name) || !text(r.last_name) || !text(r.address) || !text(r.phone) ||
+    if (!text(r.prefix) || !text(r.first_name) || !text(r.last_name) || !text(r.address) || !text(r.phone) ||
         !text(r.emergency_phone) || !text(r.emergency_relation) ||
         !['A', 'B', 'AB', 'O'].includes(String(r.blood_group)) || !text(r.shirt_size))
       fail(400, 'กรุณากรอกข้อมูลผู้แข่งขันให้ครบ');
@@ -326,6 +326,10 @@ Deno.serve(async req => {
         }
       }
       const current = await settings();
+      const nextOpen = 'registration_opens_at' in changes ? changes.registration_opens_at : current.registration_opens_at;
+      const nextClose = 'registration_closes_at' in changes ? changes.registration_closes_at : current.registration_closes_at;
+      if (!nextOpen || (nextClose && Date.parse(String(nextClose)) <= Date.parse(String(nextOpen))))
+        fail(400, 'เวลาปิดรับสมัครต้องหลังเวลาเปิดรับสมัคร');
       const { data: prices } = await db.from('rrih_packages').select('price_thb').eq('active', true);
       const minPrice = Math.min(...(prices || []).map(p => p.price_thb));
       if (Number(changes.deposit_thb ?? current.deposit_thb) +

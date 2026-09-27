@@ -14,6 +14,16 @@
     ja: { register:'参加申込',payNext:'次回のお支払い',choosePackage:'パッケージ選択',packageHint:'表示価格はパッケージ全体の合計です',participants:'参加者情報',participantHint:'パッケージに含まれる全参加者を入力',beneficiaries:'受取人',beneficiaryHint:'参加者ごとに合計100%にしてください',payment:'お支払い',paymentHint:'一括または3回払い',full:'一括払い',installments:'3回払い',slip:'振込明細をアップロード',consent:'登録と大会運営のための情報利用に同意します',sendApplication:'申込を送信',paymentDetails:'振込先情報',bank:'銀行',copy:'コピー',slipCheck:'表示額を振り込み、確認用の明細を添付してください',findApplication:'申込を検索',findHint:'参加者いずれかの身分証/パスポート番号を入力',idDocument:'身分証 / パスポート',accessCode:'申込確認コード',search:'検索',submitSlip:'支払証明を送信',lostCode:'確認コードを紛失しましたか？',lostCodeHint:'コードは申込完了時に表示されます。紛失時は大会スタッフにご連絡ください。',admin:'スタッフ用',runner:'参加者',follower:'同伴者',prefix:'敬称',firstName:'名',lastName:'姓',address:'住所',phone:'電話番号',emergencyPhone:'緊急連絡先',emergencyRelation:'緊急連絡先との関係',blood:'血液型',shirt:'シャツサイズ',beneName:'受取人氏名',beneRelation:'続柄',percent:'割合',addBene:'受取人を追加',remove:'削除',total:'合計',breakfast:'朝食',party:'アフターパーティー',people:'参加者',dueNow:'今回のお支払い',installment:'第',dueDate:'期限',paid:'支払済',balance:'残額',pending:'未払い',review:'明細確認待ち',overdue:'期限超過',complete:'全額支払済',success:'申込を送信しました。明細を確認中です',saveCode:'次回のお支払い用に確認コードを保存してください',copyCode:'コードをコピー',opening:'2026年9月28日 12:00（タイ時間）受付開始',loading:'処理中…',error:'エラーが発生しました。再試行してください',noPayment:'現在支払い可能な次の回はありません',invalidBene:'各参加者の受取人割合は100%、証明書番号は重複不可',duplicate:'この証明書番号は登録済みです' },
   };
   let language = 'th', cfg = null, selected = null, lookup = null, cachedCredentials = null;
+  let submitting = false, scheduleTimer;
+  const alerts = window.RRIHAlerts;
+  const ui = {
+    th: { required:'กรุณากรอกข้อมูลให้ครบ', missing:'กรุณากรอกหรือเลือก', invalid:'ตรวจข้อมูลไม่ผ่าน', submitted:'ส่งข้อมูลสำเร็จ', closed:'ปิดรับสมัครแล้ว', opens:'เปิดรับสมัคร', copyDone:'คัดลอกรหัสแล้ว' },
+    en: { required:'Please complete every field', missing:'Please enter or select', invalid:'Check your details', submitted:'Submitted', closed:'Registration is closed', opens:'Registration opens', copyDone:'Code copied' },
+    zh: { required:'请填写所有必填项', missing:'请填写或选择', invalid:'请检查资料', submitted:'提交成功', closed:'报名已结束', opens:'报名开始', copyDone:'确认码已复制' },
+    ru: { required:'Заполните все поля', missing:'Заполните или выберите', invalid:'Проверьте данные', submitted:'Отправлено', closed:'Регистрация закрыта', opens:'Регистрация открывается', copyDone:'Код скопирован' },
+    ja: { required:'すべての必須項目を入力してください', missing:'入力または選択してください', invalid:'入力内容を確認してください', submitted:'送信しました', closed:'受付終了', opens:'受付開始', copyDone:'コードをコピーしました' },
+  };
+  const u = key => ui[language]?.[key] || ui.en[key];
   const t = key => words[language]?.[key] || words.en[key] || key;
   const money = amount => `${Number(amount || 0).toLocaleString(language === 'th' ? 'th-TH' : 'en-US')} ฿`;
   const date = value => new Intl.DateTimeFormat(language === 'th' ? 'th-TH' : language,
@@ -30,17 +40,31 @@
   function feedback(element, message, success = false) {
     element.textContent = message; element.className = `feedback ${success ? 'success' : 'error'}`;
   }
+  async function validForm(form) {
+    const invalid = [...form.querySelectorAll('input,select,textarea')].find(el =>
+      !el.validity.valid || (el.required && el.type !== 'checkbox' && el.type !== 'file' && !el.value.trim()));
+    if (!invalid) return true;
+    const field = invalid.closest('label')?.querySelector('span')?.textContent || invalid.name || t('error');
+    const runner = invalid.closest('.runner')?.querySelector('h3')?.textContent;
+    await alerts.notice('warning', u('required'), `${u('missing')} ${runner ? `${runner} · ` : ''}${field}`);
+    invalid.focus();
+    return false;
+  }
   function translateAll() {
     document.documentElement.lang = language;
     all('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
     renderPackages(); renderSchedule(); if (lookup) renderLookup(lookup);
+    applySchedule();
   }
   const label = (key, name, value = '', type = 'text', extra = '') =>
     `<label class="field"><span data-i18n="${key}">${escape(t(key))}</span><input name="${name}" type="${type}" value="${escape(value)}" ${extra}></label>`;
   function runnerHtml(no) {
     const shirts = cfg.shirt_sizes.map(s => `<option value="${escape(s.code)}">${escape(s.label)}</option>`).join('');
     return `<div class="person-card runner" data-no="${no}"><h3>${escape(t('runner'))} ${no}</h3><div class="form-grid">
-      ${label('prefix','prefix','', 'text')}${label('firstName','first_name','','text','required')}${label('lastName','last_name','','text','required')}
+      <label class="field"><span data-i18n="prefix">${escape(t('prefix'))}</span><select name="prefix" required><option value="">—</option>
+        ${['นาย','นาง','นางสาว','เด็กชาย','เด็กหญิง','คุณ','Mr.','Mrs.','Ms.','Miss','Mx.','Dr.'].map(value =>
+          `<option value="${escape(value)}">${escape(value)}</option>`).join('')}</select></label>
+      ${label('firstName','first_name','','text','required')}${label('lastName','last_name','','text','required')}
       ${label('idDocument','id_document','','text','required autocomplete="off" class="id-document"')}
       <label class="field span-all"><span data-i18n="address">${escape(t('address'))}</span><textarea name="address" required></textarea></label>
       ${label('phone','phone','','tel','required')}${label('emergencyPhone','emergency_phone','','tel','required')}
@@ -143,36 +167,60 @@
     if (next) $('#nextPaymentTitle').textContent = `${t('dueNow')} · ${t('installment')} ${next.installment_no} · ${money(next.amount_due_thb)}`;
     renderPaymentBox(next?.amount_due_thb || 0);
   }
+  function applySchedule() {
+    if (!cfg) return;
+    clearTimeout(scheduleTimer);
+    const now = Date.now(), opens = new Date(cfg.registration_opens_at).getTime();
+    const closes = cfg.registration_closes_at ? new Date(cfg.registration_closes_at).getTime() : Infinity;
+    const waiting = now < opens, closed = now > closes;
+    const hasPaymentDetails = Boolean(cfg.account_number || cfg.promptpay_number);
+    const opening = new Intl.DateTimeFormat(language === 'th' ? 'th-TH' : language,
+      { dateStyle:'medium', timeStyle:'short', timeZone:'Asia/Bangkok' }).format(opens);
+    const message = !hasPaymentDetails ? 'ยังไม่มีข้อมูลบัญชีรับชำระ กรุณาติดต่อเจ้าหน้าที่' :
+      waiting ? `${u('opens')} ${opening}` : closed ? u('closed') : '';
+    $('#globalMessage').textContent = message;
+    $('#globalMessage').classList.toggle('hidden', !message);
+    const button = $('#submitRegistration'), formMessage = $('#formMessage');
+    if (button) button.disabled = submitting || !hasPaymentDetails || waiting || closed;
+    if (formMessage && !submitting) {
+      if (message) { feedback(formMessage, message); formMessage.dataset.gateNotice = '1'; }
+      else if (formMessage.dataset.gateNotice) { feedback(formMessage, ''); delete formMessage.dataset.gateNotice; }
+    }
+    const transition = waiting ? opens : closes;
+    if (Number.isFinite(transition) && transition > now)
+      scheduleTimer = setTimeout(applySchedule, Math.min(transition - now + 1000, 2147483647));
+  }
+  async function refreshSchedule() {
+    if (!cfg || document.hidden) return;
+    try {
+      const fresh = await api('config');
+      cfg.registration_opens_at = fresh.registration_opens_at;
+      cfg.registration_closes_at = fresh.registration_closes_at;
+      applySchedule();
+    } catch { /* Keep the last known schedule; server still validates every submission. */ }
+  }
   async function init() {
     if (!window.RRIH_CONFIG?.SUPABASE_URL || !window.RRIH_CONFIG?.PUBLISHABLE_KEY) {
-      $('#globalMessage').textContent = 'ระบบสมัครกำลังตั้งค่าการเชื่อมต่อ โปรดลองอีกครั้งภายหลัง';
+      const message = 'ระบบสมัครกำลังตั้งค่าการเชื่อมต่อ โปรดลองอีกครั้งภายหลัง';
+      $('#globalMessage').textContent = message;
       $('#globalMessage').classList.remove('hidden'); $('#submitRegistration').disabled = true; return;
     }
     try {
       cfg = await api('config');
       if (cfg.poster_url) { $('#poster').src = cfg.poster_url; $('#poster').classList.remove('hidden'); }
       selected = cfg.packages[0]; renderPackages(); renderPeople(); renderSchedule();
-      const hasPaymentDetails = Boolean(cfg.account_number || cfg.promptpay_number);
-      if (!hasPaymentDetails) {
-        $('#submitRegistration').disabled = true;
-        $('#globalMessage').textContent = 'ยังไม่มีข้อมูลบัญชีรับชำระ กรุณาติดต่อเจ้าหน้าที่';
-        $('#globalMessage').classList.remove('hidden');
-      }
-      const opensInMs = new Date(cfg.registration_opens_at).getTime() - Date.now();
-      const open = opensInMs > 0;
-      const closed = cfg.registration_closes_at && new Date(cfg.registration_closes_at) < new Date();
-      if (open || closed) { $('#submitRegistration').disabled = true; $('#globalMessage').textContent = open ? t('opening') : 'ปิดรับสมัครแล้ว'; $('#globalMessage').classList.remove('hidden'); }
-      if (open && !closed && hasPaymentDetails) {
-        setTimeout(() => {
-          $('#submitRegistration').disabled = false;
-          $('#globalMessage').classList.add('hidden');
-        }, Math.min(opensInMs + 1000, 2147483647));
-      }
+      applySchedule();
       if (new Date(cfg.installment_2_due_at) < new Date()) {
         $('#installmentChoice').classList.add('hidden'); $('input[value="FULL"]').checked = true;
       }
-    } catch (err) { $('#globalMessage').textContent = err.message; $('#globalMessage').classList.remove('hidden'); }
+    } catch (err) {
+      $('#submitRegistration').disabled = true;
+      $('#globalMessage').textContent = err.message; $('#globalMessage').classList.remove('hidden');
+      alerts.notice('error', t('error'), err.message);
+    }
   }
+  setInterval(refreshSchedule, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshSchedule(); });
   $('#language').addEventListener('change', event => { language = event.target.value; translateAll(); });
   $('#tabRegister').addEventListener('click', () => switchView('register'));
   $('#tabPay').addEventListener('click', () => switchView('pay'));
@@ -194,47 +242,70 @@
     const field = event.target.closest('.runner').querySelector('.id-feedback');
     try { const response = await api('availability', { method: 'POST', body: { id_document: event.target.value } });
       feedback(field, response.available ? '' : t('duplicate'));
+      if (!response.available) alerts.toast('warning', t('duplicate'));
     } catch { feedback(field, ''); }
   });
   $('#registrationForm').addEventListener('submit', async event => {
-    event.preventDefault(); if (!cfg || !selected || !event.currentTarget.reportValidity()) return;
-    const button = $('#submitRegistration'); button.disabled = true;
+    event.preventDefault(); if (!cfg || !selected || submitting || !await validForm(event.currentTarget)) return;
+    submitting = true; applySchedule();
     try {
       const data = collectRegistration(), form = new FormData();
       form.set('data', JSON.stringify(data)); form.set('slip', $('#firstSlip').files[0]);
-      feedback($('#formMessage'), t('loading'), true);
+      alerts.loading(t('loading'));
       const result = await api('register', { method: 'POST', body: form });
+      alerts.close();
       const displayCode = result.access_code.match(/.{1,8}/g).join('-');
       $('#registrationForm').innerHTML = `<div class="panel receipt"><h2>${escape(t('success'))}</h2><p>${escape(result.registration_code)}</p>
         <p>${escape(t('saveCode'))}</p><p><code>${escape(displayCode)}</code></p><button type="button" class="small-button" id="copyAccess">${escape(t('copyCode'))}</button></div>`;
-      $('#copyAccess').addEventListener('click', () => navigator.clipboard.writeText(displayCode));
+      $('#copyAccess').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(displayCode); alerts.toast('success', u('copyDone')); }
+        catch { alerts.notice('error', t('error'), t('saveCode')); }
+      });
       $('#paymentBox').classList.add('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err) { feedback($('#formMessage'), err.message); button.disabled = false; }
+      const confirmed = await alerts.fire({ icon:'success', title:t('success'),
+        html:`<strong>${escape(result.registration_code)}</strong><p>${escape(t('saveCode'))}</p><code>${escape(displayCode)}</code>`,
+        confirmButtonText:t('copyCode'), showCloseButton:true });
+      if (confirmed.isConfirmed) {
+        try { await navigator.clipboard.writeText(displayCode); alerts.toast('success', u('copyDone')); }
+        catch { alerts.notice('error', t('error'), t('saveCode')); }
+      }
+    } catch (err) {
+      alerts.close(); await alerts.notice('error', u('invalid'), err.message);
+      submitting = false; applySchedule();
+    }
   });
   $('#lookupForm').addEventListener('submit', async event => {
-    event.preventDefault(); if (!event.currentTarget.reportValidity()) return;
+    event.preventDefault(); if (!await validForm(event.currentTarget)) return;
     try {
-      feedback($('#lookupMessage'), t('loading'), true);
+      alerts.loading(t('loading'));
       cachedCredentials = { id_document: $('#lookupId').value, access_code: $('#lookupCode').value };
       lookup = await api('lookup', { method: 'POST', body: cachedCredentials });
-      feedback($('#lookupMessage'), '', true); renderLookup(lookup);
-    } catch (err) { lookup = null; $('#lookupResult').classList.add('hidden'); feedback($('#lookupMessage'), err.message); }
+      alerts.close(); renderLookup(lookup); alerts.toast('success', t('search'));
+    } catch (err) {
+      alerts.close(); lookup = null; $('#lookupResult').classList.add('hidden');
+      await alerts.notice('error', u('invalid'), err.message);
+    }
   });
   $('#nextPaymentForm').addEventListener('submit', async event => {
-    event.preventDefault(); if (!event.currentTarget.reportValidity() || !lookup?.next_installment_id) return;
+    event.preventDefault(); if (!lookup?.next_installment_id || !await validForm(event.currentTarget)) return;
     const button = $('#submitPayment'); button.disabled = true;
     try {
       const form = new FormData();
       form.set('id_document', cachedCredentials.id_document); form.set('access_code', cachedCredentials.access_code);
       form.set('installment_id', lookup.next_installment_id); form.set('slip', $('#nextSlip').files[0]);
-      feedback($('#paymentMessage'), t('loading'), true);
+      alerts.loading(t('loading'));
       await api('submit-payment', { method: 'POST', body: form });
       lookup = await api('lookup', { method: 'POST', body: cachedCredentials });
-      renderLookup(lookup); feedback($('#lookupMessage'), t('review'), true);
-    } catch (err) { feedback($('#paymentMessage'), err.message); } finally { button.disabled = false; }
+      alerts.close(); renderLookup(lookup); await alerts.notice('success', u('submitted'), t('review'));
+    } catch (err) { alerts.close(); await alerts.notice('error', u('invalid'), err.message); }
+    finally { button.disabled = false; }
   });
-  $('#copyAccount').addEventListener('click', () => navigator.clipboard.writeText(cfg.account_number));
-  $('#copyPromptpay').addEventListener('click', () => navigator.clipboard.writeText(cfg.promptpay_number));
+  async function copyPayment(value) {
+    try { await navigator.clipboard.writeText(value); alerts.toast('success', u('copyDone')); }
+    catch { alerts.notice('error', t('error'), t('copy')); }
+  }
+  $('#copyAccount').addEventListener('click', () => copyPayment(cfg.account_number));
+  $('#copyPromptpay').addEventListener('click', () => copyPayment(cfg.promptpay_number));
   init();
 })();
