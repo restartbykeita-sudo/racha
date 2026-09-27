@@ -23,6 +23,15 @@
     ru: { required:'Заполните все поля', missing:'Заполните или выберите', invalid:'Проверьте данные', submitted:'Отправлено', closed:'Регистрация закрыта', opens:'Регистрация открывается', copyDone:'Код скопирован' },
     ja: { required:'すべての必須項目を入力してください', missing:'入力または選択してください', invalid:'入力内容を確認してください', submitted:'送信しました', closed:'受付終了', opens:'受付開始', copyDone:'コードをコピーしました' },
   };
+  const titles = {
+    th: { MR:'นาย', MRS:'นาง', MS:'นางสาว', MASTER:'เด็กชาย', MISS:'เด็กหญิง', MX:'คุณ', DR:'ดร.' },
+    en: { MR:'Mr.', MRS:'Mrs.', MS:'Ms.', MASTER:'Master', MISS:'Miss', MX:'Mx.', DR:'Dr.' },
+    zh: { MR:'先生', MRS:'夫人', MS:'女士', MASTER:'男童', MISS:'女童', MX:'不指定', DR:'博士' },
+    ru: { MR:'г-н', MRS:'г-жа (замужем)', MS:'г-жа', MASTER:'мальчик', MISS:'девочка', MX:'без обращения', DR:'д-р' },
+    ja: { MR:'ミスター', MRS:'ミセス', MS:'ミズ', MASTER:'男児', MISS:'女児', MX:'敬称なし', DR:'博士' },
+  };
+  const prefixOptions = () => `<option value="">—</option>${Object.entries(titles[language]).map(([code, name]) =>
+    `<option value="${code}">${escape(name)}</option>`).join('')}`;
   const u = key => ui[language]?.[key] || ui.en[key];
   const t = key => words[language]?.[key] || words.en[key] || key;
   const money = amount => `${Number(amount || 0).toLocaleString(language === 'th' ? 'th-TH' : 'en-US')} ฿`;
@@ -53,6 +62,14 @@
   function translateAll() {
     document.documentElement.lang = language;
     all('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+    all('#runners select[name="prefix"]').forEach(select => {
+      const chosen = select.value;
+      select.innerHTML = prefixOptions();
+      select.value = chosen;
+    });
+    all('#runners .runner').forEach((runner, i) => { runner.querySelector('h3').textContent = `${t('runner')} ${i + 1}`; });
+    all('#followers .follower').forEach(follower => { follower.querySelector('h3').textContent = t('follower'); });
+    all('.beneficiary-group').forEach((group, i) => { group.querySelector('h3').textContent = `${t('runner')} ${i + 1}`; });
     renderPackages(); renderSchedule(); if (lookup) renderLookup(lookup);
     applySchedule();
   }
@@ -61,9 +78,7 @@
   function runnerHtml(no) {
     const shirts = cfg.shirt_sizes.map(s => `<option value="${escape(s.code)}">${escape(s.label)}</option>`).join('');
     return `<div class="person-card runner" data-no="${no}"><h3>${escape(t('runner'))} ${no}</h3><div class="form-grid">
-      <label class="field"><span data-i18n="prefix">${escape(t('prefix'))}</span><select name="prefix" required><option value="">—</option>
-        ${['นาย','นาง','นางสาว','เด็กชาย','เด็กหญิง','คุณ','Mr.','Mrs.','Ms.','Miss','Mx.','Dr.'].map(value =>
-          `<option value="${escape(value)}">${escape(value)}</option>`).join('')}</select></label>
+      <label class="field"><span data-i18n="prefix">${escape(t('prefix'))}</span><select name="prefix" required>${prefixOptions()}</select></label>
       ${label('firstName','first_name','','text','required')}${label('lastName','last_name','','text','required')}
       ${label('idDocument','id_document','','text','required autocomplete="off" class="id-document"')}
       <label class="field span-all"><span data-i18n="address">${escape(t('address'))}</span><textarea name="address" required></textarea></label>
@@ -137,7 +152,11 @@
   }
   const values = element => Object.fromEntries([...element.querySelectorAll('[name]')].map(el => [el.name, el.value.trim()]));
   function collectRegistration() {
-    const runners = all('#runners .runner').map(values);
+    const runners = all('#runners .runner').map(runner => {
+      const data = values(runner);
+      data.prefix = titles[language][data.prefix] || '';
+      return data;
+    });
     const followers = all('#followers .follower').map(values);
     const beneficiaries = all('.beneficiary-group').flatMap(group =>
       [...group.querySelectorAll('.beneficiary-card')].map(card => ({
