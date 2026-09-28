@@ -96,7 +96,10 @@
     renderShirtGuide();
     all('#runners .runner').forEach((runner, i) => { runner.querySelector('h3').textContent = `${t('runner')} ${i + 1}`; });
     all('#followers .follower').forEach(follower => { follower.querySelector('h3').textContent = t('follower'); });
-    all('.beneficiary-group').forEach((group, i) => { group.querySelector('h3').textContent = `${t('runner')} ${i + 1}`; });
+    all('.beneficiary-group').forEach((group, i) => {
+      group.querySelector('h3').textContent = `${t('runner')} ${i + 1}`;
+      group.querySelector('.total').textContent = `${t('total')}: 100%`;
+    });
     renderPackages(); renderSchedule(); if (lookup) renderLookup(lookup);
     applySchedule();
   }
@@ -140,7 +143,8 @@
     if (!cfg) return;
     $('#packages').innerHTML = cfg.packages.map(p => {
       const name = p[`name_${language}`] || p.name_en || p.name_th;
-      const details = [p.runner_count + ' ' + t('people'), p.breakfast ? t('breakfast') : '',
+      const people = language === 'en' && p.runner_count === 1 ? 'runner' : t('people');
+      const details = [p.runner_count + ' ' + people, p.breakfast ? t('breakfast') : '',
         p.after_party ? t('party') : ''].filter(Boolean).join(' · ');
       return `<button type="button" class="package-card ${selected?.code === p.code ? 'selected' : ''}" data-code="${escape(p.code)}" aria-pressed="${selected?.code === p.code}">
         <strong>${escape(name)}</strong><span class="price">${money(p.price_thb)}</span><small>${escape(details)}</small></button>`;
