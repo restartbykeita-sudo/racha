@@ -17,11 +17,11 @@
   let submitting = false, scheduleTimer;
   const alerts = window.RRIHAlerts;
   const ui = {
-    th: { required:'กรุณากรอกข้อมูลให้ครบ', missing:'กรุณากรอกหรือเลือก', invalid:'ตรวจข้อมูลไม่ผ่าน', submitted:'ส่งข้อมูลสำเร็จ', closed:'ปิดรับสมัครแล้ว', opens:'เปิดรับสมัคร', copyDone:'คัดลอกรหัสแล้ว' },
-    en: { required:'Please complete every field', missing:'Please enter or select', invalid:'Check your details', submitted:'Submitted', closed:'Registration is closed', opens:'Registration opens', copyDone:'Code copied' },
-    zh: { required:'请填写所有必填项', missing:'请填写或选择', invalid:'请检查资料', submitted:'提交成功', closed:'报名已结束', opens:'报名开始', copyDone:'确认码已复制' },
-    ru: { required:'Заполните все поля', missing:'Заполните или выберите', invalid:'Проверьте данные', submitted:'Отправлено', closed:'Регистрация закрыта', opens:'Регистрация открывается', copyDone:'Код скопирован' },
-    ja: { required:'すべての必須項目を入力してください', missing:'入力または選択してください', invalid:'入力内容を確認してください', submitted:'送信しました', closed:'受付終了', opens:'受付開始', copyDone:'コードをコピーしました' },
+    th: { required:'กรุณากรอกข้อมูลให้ครบ', missing:'กรุณากรอกหรือเลือก', invalid:'ตรวจข้อมูลไม่ผ่าน', submitted:'ส่งข้อมูลสำเร็จ', closed:'ปิดรับสมัครแล้ว', opens:'เปิดรับสมัคร', copyDone:'คัดลอกรหัสแล้ว', connectionTimeout:'การเชื่อมต่อใช้เวลานาน กรุณาลองใหม่', registrationTimeout:'การส่งใบสมัครใช้เวลานาน กรุณาค้นหาใบสมัครเดิมด้วยเลขบัตรก่อนส่งซ้ำ', paymentTimeout:'การส่งสลิปใช้เวลานาน กรุณาค้นหาใบสมัครอีกครั้งก่อนส่งซ้ำ' },
+    en: { required:'Please complete every field', missing:'Please enter or select', invalid:'Check your details', submitted:'Submitted', closed:'Registration is closed', opens:'Registration opens', copyDone:'Code copied', connectionTimeout:'The connection timed out. Please try again.', registrationTimeout:'Registration timed out. Look up your ID before submitting again.', paymentTimeout:'The slip upload timed out. Look up your registration before trying again.' },
+    zh: { required:'请填写所有必填项', missing:'请填写或选择', invalid:'请检查资料', submitted:'提交成功', closed:'报名已结束', opens:'报名开始', copyDone:'确认码已复制', connectionTimeout:'连接超时，请重试。', registrationTimeout:'报名提交超时，请先用证件号码查询，再重新提交。', paymentTimeout:'付款凭证提交超时，请先查询报名记录，再重试。' },
+    ru: { required:'Заполните все поля', missing:'Заполните или выберите', invalid:'Проверьте данные', submitted:'Отправлено', closed:'Регистрация закрыта', opens:'Регистрация открывается', copyDone:'Код скопирован', connectionTimeout:'Время ожидания истекло. Повторите попытку.', registrationTimeout:'Время отправки истекло. Сначала найдите заявку по ID, затем отправляйте повторно.', paymentTimeout:'Время отправки подтверждения истекло. Сначала проверьте заявку.' },
+    ja: { required:'すべての必須項目を入力してください', missing:'入力または選択してください', invalid:'入力内容を確認してください', submitted:'送信しました', closed:'受付終了', opens:'受付開始', copyDone:'コードをコピーしました', connectionTimeout:'接続がタイムアウトしました。もう一度お試しください。', registrationTimeout:'申込送信がタイムアウトしました。再送前に身分証番号で申込を検索してください。', paymentTimeout:'明細の送信がタイムアウトしました。再送前に申込を確認してください。' },
   };
   const titles = {
     th: { MR:'นาย', MRS:'นาง', MS:'นางสาว', MASTER:'เด็กชาย', MISS:'เด็กหญิง' },
@@ -61,13 +61,28 @@
   const date = value => new Intl.DateTimeFormat(language === 'th' ? 'th-TH' : language,
     { dateStyle: 'medium', timeZone: 'Asia/Bangkok' }).format(new Date(value));
   const api = async (action, { method = 'GET', body } = {}) => {
-    const response = await fetch(`${window.RRIH_CONFIG.SUPABASE_URL}/functions/v1/registration-api?action=${action}`,
-      { method, headers: { apikey: window.RRIH_CONFIG.PUBLISHABLE_KEY,
-        ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }) },
-        body: body == null ? undefined : body instanceof FormData ? body : JSON.stringify(body) });
-    const value = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(value.error || t('error'));
-    return value;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(),
+      action === 'register' || action === 'submit-payment' ? 60000 : 20000);
+    try {
+      const response = await fetch(`${window.RRIH_CONFIG.SUPABASE_URL}/functions/v1/registration-api?action=${action}`,
+        { method, signal: controller.signal, headers: { apikey: window.RRIH_CONFIG.PUBLISHABLE_KEY,
+          ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }) },
+          body: body == null ? undefined : body instanceof FormData ? body : JSON.stringify(body) });
+      const value = await response.json().catch(error => {
+        if (controller.signal.aborted) throw error;
+        return {};
+      });
+      if (!response.ok) throw new Error(value.error || t('error'));
+      return value;
+    } catch (error) {
+      if (controller.signal.aborted) {
+        const message = action === 'register' ? 'registrationTimeout' :
+          action === 'submit-payment' ? 'paymentTimeout' : 'connectionTimeout';
+        throw new Error(u(message));
+      }
+      throw error;
+    } finally { clearTimeout(timeout); }
   };
   function feedback(element, message, success = false) {
     element.textContent = message; element.className = `feedback ${success ? 'success' : 'error'}`;
