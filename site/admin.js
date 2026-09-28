@@ -4,6 +4,12 @@
   const escape = value => String(value ?? '').replace(/[&<>"']/g,
     c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
   const money = value => `${Number(value || 0).toLocaleString('th-TH')} ฿`;
+  const installmentAmounts = price => {
+    const first = Math.floor(price / 300) * 100;
+    const second = Math.floor((price - first) / 200) * 100;
+    return [first, second, price - first - second];
+  };
+  const installmentPreview = price => `ผ่อน 3 งวด: ${installmentAmounts(price).map(money).join(' / ')}`;
   const cfg = window.RRIH_CONFIG;
   const alerts = window.RRIHAlerts;
   let client, snapshot, currentUser;
@@ -109,6 +115,7 @@
       `<form class="person-card package-form" data-code="${escape(p.code)}" novalidate><h3>${escape(p.code)}</h3><div class="admin-form">
         ${['th','en','zh','ru','ja'].map(l => `<label class="field"><span>ชื่อ ${l}</span><input name="name_${l}" value="${escape(p[`name_${l}`] || '')}" ${l === 'th' ? 'required' : ''}></label>`).join('')}
         <label class="field"><span>ราคา (บาท)</span><input name="price_thb" type="number" min="5000" value="${p.price_thb}" required></label>
+        <p class="muted" data-installment-preview style="grid-column:1/-1">${installmentPreview(p.price_thb)}</p>
         <label class="field"><span>ผู้แข่งขัน</span><input name="runner_count" type="number" min="1" max="2" value="${p.runner_count}" required></label>
         <label class="field"><span>ผู้ติดตาม</span><input name="follower_count" type="number" min="0" max="1" value="${p.follower_count}" required></label>
         <label class="field"><span>ประเภทห้อง</span><input name="room_type" value="${escape(p.room_type || '')}"></label>
@@ -122,7 +129,7 @@
   function renderSettings() {
     const form = $('#settingsForm'), schedule = $('#scheduleForm'), s = snapshot.settings;
     for (const name of ['bank_name','account_name','account_number','promptpay_name','promptpay_number','poster_url',
-      'deposit_thb','second_thb','max_slip_mb']) form.elements[name].value = s[name] ?? '';
+      'max_slip_mb']) form.elements[name].value = s[name] ?? '';
     for (const name of ['installment_2_due_at','installment_3_due_at']) form.elements[name].value = asBkkInput(s[name]);
     for (const name of ['registration_opens_at','registration_closes_at']) schedule.elements[name].value = asBkkInput(s[name]);
     for (const current of [form, schedule])
@@ -262,6 +269,12 @@
     try { alerts.loading('กำลังบันทึกแพ็กเกจ…'); await api('admin-package', body); await load(); alerts.close(); showMessage('บันทึกแพ็กเกจแล้ว', 'success'); }
     catch (err) { alerts.close(); showMessage(err.message); }
   });
+  $('#packageForms').addEventListener('input', event => {
+    if (event.target.name !== 'price_thb') return;
+    const preview = event.target.closest('.package-form').querySelector('[data-installment-preview]');
+    const price = Number(event.target.value);
+    preview.textContent = price >= 5000 ? installmentPreview(price) : 'กรุณาระบุราคาอย่างน้อย 5,000 บาท';
+  });
   $('#scheduleForm').addEventListener('submit', async event => {
     event.preventDefault(); const form = event.currentTarget;
     if (!await validForm(form)) return;
@@ -283,7 +296,7 @@
       body[name] = form.elements[name].value.trim();
     for (const name of ['installment_2_due_at','installment_3_due_at'])
       body[name] = toIso(form.elements[name].value);
-    for (const name of ['deposit_thb','second_thb','max_slip_mb']) body[name] = Number(form.elements[name].value);
+    body.max_slip_mb = Number(form.elements.max_slip_mb.value);
     try { alerts.loading('กำลังบันทึกการตั้งค่า…'); await api('admin-settings', body); await load(); alerts.close(); showMessage('บันทึกการตั้งค่าแล้ว', 'success'); }
     catch (err) { alerts.close(); showMessage(err.message); }
   });

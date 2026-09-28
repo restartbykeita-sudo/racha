@@ -236,7 +236,7 @@ Deno.serve(async req => {
       validateRegistration(data, pkg);
       const s = await settings(), { file, ext } = await checkedSlip(form, s.max_slip_mb);
       const expected = data.payment_plan === 'FULL' ? pkg.price_thb :
-        pkg.price_thb === 9000 ? 3000 : s.deposit_thb;
+        Math.floor(pkg.price_thb / 300) * 100;
       if (Number(data.amount_confirmed_thb) !== expected) fail(400, 'ยอดชำระไม่ตรงกับแพ็กเกจ');
       const bytes = crypto.getRandomValues(new Uint8Array(16));
       const code = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
@@ -347,9 +347,8 @@ Deno.serve(async req => {
     if (action === 'admin-package' && req.method === 'POST') {
       await administrator(req, true);
       const body = await req.json(), code = text(body.code);
-      const s = await settings();
       if (!/^[A-Z0-9_]{2,40}$/.test(code) || !Number.isInteger(body.price_thb) ||
-          body.price_thb <= s.deposit_thb + s.second_thb || !text(body.name_th) ||
+          body.price_thb < 5000 || !text(body.name_th) ||
           !Number.isInteger(body.runner_count) || body.runner_count < 1 || body.runner_count > 2 ||
           !Number.isInteger(body.follower_count) || body.follower_count < 0 || body.follower_count > 1 ||
           !Number.isInteger(body.sort_order)) fail(400, 'ข้อมูลแพ็กเกจไม่ถูกต้อง');
@@ -380,23 +379,18 @@ Deno.serve(async req => {
           changes[field] = body[field] || null;
         }
       }
-      for (const field of ['deposit_thb','second_thb','max_slip_mb']) {
-        if (field in body) {
-          if (!Number.isInteger(body[field]) || body[field] < 1 ||
-              (field === 'max_slip_mb' && body[field] > 10)) fail(400, 'จำนวนเงินหรือขนาดสลิปไม่ถูกต้อง');
-          changes[field] = body[field];
-        }
+      if ('max_slip_mb' in body) {
+        if (!Number.isInteger(body.max_slip_mb) || body.max_slip_mb < 1 || body.max_slip_mb > 10)
+          fail(400, 'ขนาดสลิปไม่ถูกต้อง');
+        changes.max_slip_mb = body.max_slip_mb;
       }
       const current = await settings();
       const nextOpen = 'registration_opens_at' in changes ? changes.registration_opens_at : current.registration_opens_at;
       const nextClose = 'registration_closes_at' in changes ? changes.registration_closes_at : current.registration_closes_at;
       if (!nextOpen || (nextClose && Date.parse(String(nextClose)) <= Date.parse(String(nextOpen))))
         fail(400, 'เวลาปิดรับสมัครต้องหลังเวลาเปิดรับสมัคร');
-      const { data: prices } = await db.from('rrih_packages').select('price_thb').eq('active', true);
-      const minPrice = Math.min(...(prices || []).map(p => p.price_thb));
-      if (Number(changes.deposit_thb ?? current.deposit_thb) +
-          Number(changes.second_thb ?? current.second_thb) >= minPrice)
-        fail(400, 'มัดจำและงวด 2 ต้องน้อยกว่าราคาของทุกแพ็กเกจที่เปิดอยู่');
+      if ('deposit_thb' in body || 'second_thb' in body)
+        fail(400, 'ยอดผ่อนคำนวณตามราคาแพ็กเกจอัตโนมัติ กรุณารีเฟรชหน้าแอดมิน');
       const { data, error } = await db.from('rrih_settings').update(changes).eq('id',1).select().single();
       if (error || !data) fail(400, 'บันทึกข้อมูลชำระไม่สำเร็จ');
       return json(data, 200, origin);

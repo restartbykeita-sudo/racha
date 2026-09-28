@@ -56,8 +56,8 @@
   const u = key => ui[language]?.[key] || ui.en[key];
   const t = key => words[language]?.[key] || words.en[key] || key;
   const money = amount => `${Number(amount || 0).toLocaleString(language === 'th' ? 'th-TH' : 'en-US')} ฿`;
-  const firstInstallment = p => p.price_thb === 9000 ? 3000 : cfg.deposit_thb;
-  const secondInstallment = p => p.price_thb === 9000 ? 3000 : cfg.second_thb;
+  const firstInstallment = p => Math.floor(p.price_thb / 300) * 100;
+  const secondInstallment = p => Math.floor((p.price_thb - firstInstallment(p)) / 200) * 100;
   const date = value => new Intl.DateTimeFormat(language === 'th' ? 'th-TH' : language,
     { dateStyle: 'medium', timeZone: 'Asia/Bangkok' }).format(new Date(value));
   const api = async (action, { method = 'GET', body } = {}) => {

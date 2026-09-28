@@ -2,7 +2,7 @@
   <meta name="theme-color" content="#22183a"><title>แอดมิน · RESTART RACHA ISLAND HYBRID</title>
   <link rel="stylesheet" href="style.css"><script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"></script>
-  <script defer src="alerts.js"></script><script defer src="config.js"></script><script defer src="export-xlsx.js?v=20260928-1"></script><script defer src="admin.js?v=20260928-export-1"></script>
+  <script defer src="alerts.js"></script><script defer src="config.js"></script><script defer src="export-xlsx.js?v=20260928-1"></script><script defer src="admin.js?v=20260928-balanced-installments-1"></script>
 </head><body>
   <header class="site-header wrap"><a class="brand" href="./"><span class="brand-mark">R</span><span>RESTART <small>REGISTRATION ADMIN</small></span></a><div class="inline-actions"><a class="small-button" href="./">หน้าสมัคร</a><button id="signOut" class="small-button hidden" type="button">ออกจากระบบ</button></div></header>
   <main class="wrap"><div id="adminMessage" class="alert hidden" role="status"></div>
@@ -29,7 +29,7 @@
             <label class="field"><span>ค้นหาชื่อ / เลขเอกสาร / รหัสสมัคร</span><input id="adminSearch" type="search"></label></div>
           <div class="table-wrap"><table class="data-table"><thead><tr><th>ผู้แข่งขัน / เอกสาร</th><th>แพ็กเกจ</th><th>งวด 1</th><th>งวด 2</th><th>งวด 3</th><th>จ่ายแล้ว / คงเหลือ</th><th>ตรวจสลิป</th></tr></thead><tbody id="registrationRows"></tbody></table></div>
           <p id="resultCount" class="muted"></p></section>
-        <section id="packagesPage" class="panel hidden"><h2>ตั้งค่าแพ็กเกจ</h2><p class="muted">แก้ราคาสำหรับผู้สมัครใหม่ ราคาของใบสมัครเดิมจะคงเดิม</p><div id="packageForms" class="stack"></div></section>
+        <section id="packagesPage" class="panel hidden"><h2>ตั้งค่าแพ็กเกจ</h2><p class="muted">แก้ราคาสำหรับผู้สมัครใหม่ ราคาของใบสมัครเดิมจะคงเดิม ระบบเฉลี่ยยอดผ่อน 3 งวดตามราคาแพ็กเกจ ปัดเป็นหลักร้อย</p><div id="packageForms" class="stack"></div></section>
         <section id="settingsPage" class="panel hidden"><h2>กำหนดเวลาเปิด/ปิดรับสมัคร</h2>
           <p class="muted">ใช้เวลาไทย (Asia/Bangkok) การเปลี่ยนเวลามีผลทันทีเมื่อบันทึก ผู้สมัครที่เปิดหน้าเดิมจะได้รับสถานะใหม่ภายในหนึ่งนาที</p>
           <form id="scheduleForm" class="admin-form" novalidate>
@@ -42,8 +42,7 @@
           <label class="field"><span>เลขบัญชี</span><input name="account_number"></label><label class="field"><span>ชื่อ PromptPay</span><input name="promptpay_name"></label>
           <label class="field"><span>หมายเลข PromptPay</span><input name="promptpay_number"></label><label class="field"><span>URL โปสเตอร์</span><input name="poster_url" type="url"></label>
           <label class="field"><span>งวด 2 ครบกำหนด (เวลาไทย)</span><input name="installment_2_due_at" type="datetime-local" required></label><label class="field"><span>งวด 3 ครบกำหนด (เวลาไทย)</span><input name="installment_3_due_at" type="datetime-local" required></label>
-          <label class="field"><span>มัดจำงวด 1 สำหรับแพ็กเกจอื่น (บาท)</span><input name="deposit_thb" type="number" min="1" required></label><label class="field"><span>งวด 2 สำหรับแพ็กเกจอื่น (บาท)</span><input name="second_thb" type="number" min="1" required></label>
-          <p class="muted" style="grid-column:1/-1">แพ็กเกจราคา 9,000 บาทกำหนดผ่อนงวดละ 3,000 บาททั้ง 3 งวดโดยเฉพาะ</p>
+          <p class="muted" style="grid-column:1/-1">ยอดผ่อน 3 งวดคำนวณอัตโนมัติตามราคาแพ็กเกจ แต่ละงวดต่างกันไม่เกินประมาณ 100 บาทสำหรับราคาปัจจุบัน</p>
           <label class="field"><span>ขนาดสลิปสูงสุด (MB)</span><input name="max_slip_mb" type="number" min="1" max="10" required></label>
           <button class="primary" type="submit">บันทึกการตั้งค่า</button></form></section>
         <section id="accountsPage" class="panel hidden"><h2>คำขอสมัครแอดมิน</h2>
