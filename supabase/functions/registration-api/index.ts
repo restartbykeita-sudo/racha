@@ -18,12 +18,6 @@ const normalizeId = (value: unknown) => String(value || '').normalize('NFKC').to
 const text = (value: unknown) => String(value || '').trim();
 const hash = async (value: string) => Array.from(new Uint8Array(await crypto.subtle.digest(
   'SHA-256', new TextEncoder().encode(value)))).map(x => x.toString(16).padStart(2, '0')).join('');
-const equalHash = (a: string, b: string) => {
-  if (a.length !== b.length) return false;
-  let difference = 0;
-  for (let i = 0; i < a.length; i++) difference |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return difference === 0;
-};
 const json = (body: unknown, status = 200, origin = '') => new Response(JSON.stringify(body), {
   status, headers: { 'content-type': 'application/json; charset=utf-8',
     'access-control-allow-origin': origin, 'vary': 'Origin', 'cache-control': 'no-store' },
@@ -142,18 +136,22 @@ async function upload(file: File, ext: string) {
 }
 async function cleanup(path: string) { await db.storage.from('rrih-slips').remove([path]); }
 
-async function registrationFor(idDocument: unknown, accessCode: unknown) {
-  const id = normalizeId(idDocument), code = text(accessCode).replace(/[\s-]/g, '').toUpperCase();
-  if (id.length < 5 || code.length !== 32) fail(400, 'ข้อมูลค้นหาไม่ถูกต้อง');
+async function registrationFor(idDocument: unknown) {
+  const id = normalizeId(idDocument);
+  if (id.length < 5 || id.length > 30) fail(400, 'เลขบัตรหรือ Passport ไม่ถูกต้อง');
   const { data: people, error } = await db.from('rrih_participants')
     .select('registration_id').eq('role', 'RUNNER').eq('id_normalized', id).limit(1);
-  if (error || !people?.length) throw new ApiError(404, 'ไม่พบใบสมัครหรือรหัสยืนยันไม่ถูกต้อง');
+  if (error) fail(503, 'ค้นหาใบสมัครไม่สำเร็จ');
+  if (!people?.length) fail(404, 'ไม่พบใบสมัครของผู้แข่งขัน');
   const { data: registration } = await db.from('rrih_registrations').select('*')
     .eq('id', people[0].registration_id).eq('status', 'ACTIVE').single();
-  if (!registration || !equalHash(await hash(code), registration.access_secret_hash))
-    fail(404, 'ไม่พบใบสมัครหรือรหัสยืนยันไม่ถูกต้อง');
+  if (!registration) fail(404, 'ไม่พบใบสมัครของผู้แข่งขัน');
   return registration;
 }
+const maskedName = (name: unknown) => {
+  const characters = [...text(name)];
+  return characters.length ? `${characters[0]}${'•'.repeat(Math.min(characters.length - 1, 3))}` : '';
+};
 async function registrationSummary(reg: Record<string, unknown>) {
   const [people, due] = await Promise.all([
     db.from('rrih_participants').select('role,runner_no,first_name,last_name')
@@ -166,9 +164,11 @@ async function registrationSummary(reg: Record<string, unknown>) {
   const paid = installments.filter(i => i.status === 'PAID')
     .reduce((sum, i) => sum + i.amount_due_thb, 0);
   const first = installments.find(i => i.status !== 'PAID');
-  return { registration_code: reg.registration_code, package_name: reg.package_name_snapshot,
+  return { package_name: reg.package_name_snapshot,
     price_thb: reg.package_price_thb, payment_plan: reg.payment_plan,
-    runners: (people.data || []).filter(p => p.role === 'RUNNER'),
+    runners: (people.data || []).filter(p => p.role === 'RUNNER').map(p => ({
+      first_name: maskedName(p.first_name), last_name: maskedName(p.last_name),
+    })),
     paid_thb: paid, balance_thb: Number(reg.package_price_thb) - paid,
     installments: installments.map(i => ({ ...i,
       display_status: i.status === 'PENDING' && new Date(i.due_at) < new Date() ? 'OVERDUE' : i.status })),
@@ -225,18 +225,18 @@ Deno.serve(async req => {
           known[error.message] || 'ตรวจสอบใบสมัครไม่ผ่าน กรุณาตรวจข้อมูลอีกครั้ง';
         fail(400, message);
       }
-      return json({ ...result, access_code: code }, 201, origin);
+      return json(result, 201, origin);
     }
     if (action === 'lookup' && req.method === 'POST') {
       await limit(req, action, 8);
       const body = await req.json();
-      const reg = await registrationFor(body.id_document, body.access_code);
+      const reg = await registrationFor(body.id_document);
       return json(await registrationSummary(reg), 200, origin);
     }
     if (action === 'submit-payment' && req.method === 'POST') {
       await limit(req, action, 8);
       const form = await req.formData(), s = await settings();
-      const reg = await registrationFor(form.get('id_document'), form.get('access_code'));
+      const reg = await registrationFor(form.get('id_document'));
       const summary = await registrationSummary(reg);
       const installmentId = String(form.get('installment_id') || '');
       if (!summary.next_installment_id || installmentId !== summary.next_installment_id)

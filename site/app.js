@@ -13,7 +13,7 @@
     ru: { register:'Регистрация',payNext:'Следующий платёж',choosePackage:'Выберите пакет',packageHint:'Цена указана за весь пакет',participants:'Данные участников',participantHint:'Укажите всех участников пакета',beneficiaries:'Выгодоприобретатели',beneficiaryHint:'Доли для каждого участника — 100%',payment:'Оплата',paymentHint:'Полностью или тремя платежами',full:'Оплатить полностью',installments:'Три платежа',slip:'Загрузить подтверждение оплаты',consent:'Я согласен на использование данных для регистрации и организации мероприятия',sendApplication:'Отправить заявку',paymentDetails:'Реквизиты',bank:'Банк',copy:'Копировать',slipCheck:'Переведите указанную сумму и загрузите подтверждение для проверки',findApplication:'Найти заявку',findHint:'По паспорту/ID любого участника',idDocument:'ID / Паспорт',accessCode:'Код подтверждения заявки',search:'Найти',submitSlip:'Отправить подтверждение',lostCode:'Потеряли код?',lostCodeHint:'Код показывается после регистрации. Обратитесь к организатору для восстановления доступа.',admin:'Для персонала',runner:'Участник',follower:'Сопровождающий',prefix:'Обращение',firstName:'Имя',lastName:'Фамилия',address:'Адрес',phone:'Телефон',emergencyPhone:'Экстренный телефон',emergencyRelation:'Связь с экстренным контактом',blood:'Группа крови',shirt:'Размер футболки',beneName:'Имя выгодоприобретателя',beneRelation:'Кем приходится',percent:'Процент',addBene:'Добавить',remove:'Удалить',total:'Итого',breakfast:'Завтрак',party:'Вечеринка',people:'участника',dueNow:'К оплате сейчас',installment:'Платёж',dueDate:'Срок',paid:'Оплачено',balance:'Остаток',pending:'Не оплачено',review:'Ожидает проверки',overdue:'Просрочено',complete:'Оплачено полностью',success:'Заявка отправлена; платёж проверяется',saveCode:'Сохраните код для следующих платежей',copyCode:'Копировать код',opening:'Регистрация откроется 28 сентября 2026, 12:00 (Таиланд)',loading:'Обработка…',error:'Ошибка. Попробуйте ещё раз',noPayment:'Следующий платёж пока недоступен',invalidBene:'Доли для каждого участника должны составлять 100%; номера документов не должны повторяться',duplicate:'Этот документ уже зарегистрирован' },
     ja: { register:'参加申込',payNext:'次回のお支払い',choosePackage:'パッケージ選択',packageHint:'表示価格はパッケージ全体の合計です',participants:'参加者情報',participantHint:'パッケージに含まれる全参加者を入力',beneficiaries:'受取人',beneficiaryHint:'参加者ごとに合計100%にしてください',payment:'お支払い',paymentHint:'一括または3回払い',full:'一括払い',installments:'3回払い',slip:'振込明細をアップロード',consent:'登録と大会運営のための情報利用に同意します',sendApplication:'申込を送信',paymentDetails:'振込先情報',bank:'銀行',copy:'コピー',slipCheck:'表示額を振り込み、確認用の明細を添付してください',findApplication:'申込を検索',findHint:'参加者いずれかの身分証/パスポート番号を入力',idDocument:'身分証 / パスポート',accessCode:'申込確認コード',search:'検索',submitSlip:'支払証明を送信',lostCode:'確認コードを紛失しましたか？',lostCodeHint:'コードは申込完了時に表示されます。紛失時は大会スタッフにご連絡ください。',admin:'スタッフ用',runner:'参加者',follower:'同伴者',prefix:'敬称',firstName:'名',lastName:'姓',address:'住所',phone:'電話番号',emergencyPhone:'緊急連絡先',emergencyRelation:'緊急連絡先との関係',blood:'血液型',shirt:'シャツサイズ',beneName:'受取人氏名',beneRelation:'続柄',percent:'割合',addBene:'受取人を追加',remove:'削除',total:'合計',breakfast:'朝食',party:'アフターパーティー',people:'参加者',dueNow:'今回のお支払い',installment:'第',dueDate:'期限',paid:'支払済',balance:'残額',pending:'未払い',review:'明細確認待ち',overdue:'期限超過',complete:'全額支払済',success:'申込を送信しました。明細を確認中です',saveCode:'次回のお支払い用に確認コードを保存してください',copyCode:'コードをコピー',opening:'2026年9月28日 12:00（タイ時間）受付開始',loading:'処理中…',error:'エラーが発生しました。再試行してください',noPayment:'現在支払い可能な次の回はありません',invalidBene:'各参加者の受取人割合は100%、証明書番号は重複不可',duplicate:'この証明書番号は登録済みです' },
   };
-  let language = 'th', cfg = null, selected = null, lookup = null, cachedCredentials = null;
+  let language = 'th', cfg = null, selected = null, lookup = null, lookupIdDocument = '';
   let submitting = false, scheduleTimer;
   const alerts = window.RRIHAlerts;
   const ui = {
@@ -24,11 +24,11 @@
     ja: { required:'すべての必須項目を入力してください', missing:'入力または選択してください', invalid:'入力内容を確認してください', submitted:'送信しました', closed:'受付終了', opens:'受付開始', copyDone:'コードをコピーしました' },
   };
   const titles = {
-    th: { MR:'นาย', MRS:'นาง', MS:'นางสาว', MASTER:'เด็กชาย', MISS:'เด็กหญิง', MX:'คุณ', DR:'ดร.' },
-    en: { MR:'Mr.', MRS:'Mrs.', MS:'Ms.', MASTER:'Master', MISS:'Miss', MX:'Mx.', DR:'Dr.' },
-    zh: { MR:'先生', MRS:'夫人', MS:'女士', MASTER:'男童', MISS:'女童', MX:'不指定', DR:'博士' },
-    ru: { MR:'г-н', MRS:'г-жа (замужем)', MS:'г-жа', MASTER:'мальчик', MISS:'девочка', MX:'без обращения', DR:'д-р' },
-    ja: { MR:'ミスター', MRS:'ミセス', MS:'ミズ', MASTER:'男児', MISS:'女児', MX:'敬称なし', DR:'博士' },
+    th: { MR:'นาย', MRS:'นาง', MS:'นางสาว', MASTER:'เด็กชาย', MISS:'เด็กหญิง' },
+    en: { MR:'Mr.', MRS:'Mrs.', MS:'Ms.', MASTER:'Master', MISS:'Miss' },
+    zh: { MR:'先生', MRS:'夫人', MS:'女士', MASTER:'男童', MISS:'女童' },
+    ru: { MR:'г-н', MRS:'г-жа (замужем)', MS:'г-жа', MASTER:'мальчик', MISS:'девочка' },
+    ja: { MR:'ミスター', MRS:'ミセス', MS:'ミズ', MASTER:'男児', MISS:'女児' },
   };
   const prefixOptions = () => `<option value="">—</option>${Object.entries(titles[language]).map(([code, name]) =>
     `<option value="${code}">${escape(name)}</option>`).join('')}`;
@@ -177,7 +177,7 @@
     OVERDUE: t('overdue'), PENDING: t('pending') })[value] || value;
   function renderLookup(result) {
     $('#lookupResult').classList.remove('hidden');
-    $('#registrationName').textContent = `${result.runners.map(r => `${r.first_name} ${r.last_name}`).join(' / ')} · ${result.registration_code}`;
+    $('#registrationName').textContent = result.runners.map(r => `${r.first_name} ${r.last_name}`).join(' / ');
     $('#registrationSummary').textContent = `${result.package_name} · ${money(result.price_thb)} · ${t('paid')} ${money(result.paid_thb)} · ${t('balance')} ${money(result.balance_thb)}`;
     $('#installmentList').innerHTML = result.installments.map(i =>
       `<div class="schedule-item"><span>${escape(t('installment'))} ${i.installment_no} · ${escape(statusText(i.display_status))}</span><strong>${money(i.amount_due_thb)}</strong></div>`).join('');
@@ -273,22 +273,12 @@
       alerts.loading(t('loading'));
       const result = await api('register', { method: 'POST', body: form });
       alerts.close();
-      const displayCode = result.access_code.match(/.{1,8}/g).join('-');
       $('#registrationForm').innerHTML = `<div class="panel receipt"><h2>${escape(t('success'))}</h2><p>${escape(result.registration_code)}</p>
-        <p>${escape(t('saveCode'))}</p><p><code>${escape(displayCode)}</code></p><button type="button" class="small-button" id="copyAccess">${escape(t('copyCode'))}</button></div>`;
-      $('#copyAccess').addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText(displayCode); alerts.toast('success', u('copyDone')); }
-        catch { alerts.notice('error', t('error'), t('saveCode')); }
-      });
+        <p>${escape(t('findHint'))}</p></div>`;
       $('#paymentBox').classList.add('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      const confirmed = await alerts.fire({ icon:'success', title:t('success'),
-        html:`<strong>${escape(result.registration_code)}</strong><p>${escape(t('saveCode'))}</p><code>${escape(displayCode)}</code>`,
-        confirmButtonText:t('copyCode'), showCloseButton:true });
-      if (confirmed.isConfirmed) {
-        try { await navigator.clipboard.writeText(displayCode); alerts.toast('success', u('copyDone')); }
-        catch { alerts.notice('error', t('error'), t('saveCode')); }
-      }
+      await alerts.fire({ icon:'success', title:t('success'),
+        html:`<strong>${escape(result.registration_code)}</strong><p>${escape(t('findHint'))}</p>` });
     } catch (err) {
       alerts.close(); await alerts.notice('error', u('invalid'), err.message);
       submitting = false; applySchedule();
@@ -298,8 +288,8 @@
     event.preventDefault(); if (!await validForm(event.currentTarget)) return;
     try {
       alerts.loading(t('loading'));
-      cachedCredentials = { id_document: $('#lookupId').value, access_code: $('#lookupCode').value };
-      lookup = await api('lookup', { method: 'POST', body: cachedCredentials });
+      lookupIdDocument = $('#lookupId').value.trim();
+      lookup = await api('lookup', { method: 'POST', body: { id_document: lookupIdDocument } });
       alerts.close(); renderLookup(lookup); alerts.toast('success', t('search'));
     } catch (err) {
       alerts.close(); lookup = null; $('#lookupResult').classList.add('hidden');
@@ -311,11 +301,11 @@
     const button = $('#submitPayment'); button.disabled = true;
     try {
       const form = new FormData();
-      form.set('id_document', cachedCredentials.id_document); form.set('access_code', cachedCredentials.access_code);
+      form.set('id_document', lookupIdDocument);
       form.set('installment_id', lookup.next_installment_id); form.set('slip', $('#nextSlip').files[0]);
       alerts.loading(t('loading'));
       await api('submit-payment', { method: 'POST', body: form });
-      lookup = await api('lookup', { method: 'POST', body: cachedCredentials });
+      lookup = await api('lookup', { method: 'POST', body: { id_document: lookupIdDocument } });
       alerts.close(); renderLookup(lookup); await alerts.notice('success', u('submitted'), t('review'));
     } catch (err) { alerts.close(); await alerts.notice('error', u('invalid'), err.message); }
     finally { button.disabled = false; }
