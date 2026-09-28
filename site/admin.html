@@ -42,7 +42,8 @@
           <label class="field"><span>เลขบัญชี</span><input name="account_number"></label><label class="field"><span>ชื่อ PromptPay</span><input name="promptpay_name"></label>
           <label class="field"><span>หมายเลข PromptPay</span><input name="promptpay_number"></label><label class="field"><span>URL โปสเตอร์</span><input name="poster_url" type="url"></label>
           <label class="field"><span>งวด 2 ครบกำหนด (เวลาไทย)</span><input name="installment_2_due_at" type="datetime-local" required></label><label class="field"><span>งวด 3 ครบกำหนด (เวลาไทย)</span><input name="installment_3_due_at" type="datetime-local" required></label>
-          <label class="field"><span>มัดจำงวด 1 (บาท)</span><input name="deposit_thb" type="number" min="1" required></label><label class="field"><span>งวด 2 (บาท)</span><input name="second_thb" type="number" min="1" required></label>
+          <label class="field"><span>มัดจำงวด 1 สำหรับแพ็กเกจอื่น (บาท)</span><input name="deposit_thb" type="number" min="1" required></label><label class="field"><span>งวด 2 สำหรับแพ็กเกจอื่น (บาท)</span><input name="second_thb" type="number" min="1" required></label>
+          <p class="muted" style="grid-column:1/-1">แพ็กเกจราคา 9,000 บาทกำหนดผ่อนงวดละ 3,000 บาททั้ง 3 งวดโดยเฉพาะ</p>
           <label class="field"><span>ขนาดสลิปสูงสุด (MB)</span><input name="max_slip_mb" type="number" min="1" max="10" required></label>
           <button class="primary" type="submit">บันทึกการตั้งค่า</button></form></section>
         <section id="accountsPage" class="panel hidden"><h2>คำขอสมัครแอดมิน</h2>
