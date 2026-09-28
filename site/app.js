@@ -138,16 +138,17 @@
       { no: 3, amount: selected.price_thb - cfg.deposit_thb - cfg.second_thb, due: cfg.installment_3_due_at },
     ];
     $('#paymentSchedule').innerHTML = rows.map(row => `<div class="schedule-item"><span>${escape(t('installment'))} ${row.no}${row.due ? ` · ${escape(t('dueDate'))} ${date(row.due)}` : ''}</span><strong>${money(row.amount)}</strong></div>`).join('');
-    renderPaymentBox(rows[0].amount);
+    if (!$('#registerView').classList.contains('hidden')) renderPaymentBox(rows[0].amount);
   }
   function switchView(view) {
     const isPay = view === 'pay';
     $('#registerView').classList.toggle('hidden', isPay); $('#payView').classList.toggle('hidden', !isPay);
     $('#tabRegister').classList.toggle('active', !isPay); $('#tabPay').classList.toggle('active', isPay);
     (isPay ? $('#payView .aside') : $('#registerView .aside')).prepend($('#paymentBox'));
+    const next = isPay && lookup?.installments.find(i => i.id === lookup.next_installment_id);
+    $('#paymentBox').classList.toggle('hidden', isPay ? !next : !$('#submitRegistration'));
     if (!cfg) return;
-    renderPaymentBox(isPay && lookup?.next_installment_id ?
-      lookup.installments.find(x => x.id === lookup.next_installment_id).amount_due_thb :
+    renderPaymentBox(isPay ? next?.amount_due_thb || 0 :
       selected ? ($('input[name="payment_plan"]:checked')?.value === 'FULL' ? selected.price_thb : cfg.deposit_thb) : 0);
   }
   const values = element => Object.fromEntries([...element.querySelectorAll('[name]')].map(el => [el.name, el.value.trim()]));
@@ -184,7 +185,10 @@
     const next = result.installments.find(i => i.id === result.next_installment_id);
     $('#nextPaymentForm').classList.toggle('hidden', !next);
     if (next) $('#nextPaymentTitle').textContent = `${t('dueNow')} · ${t('installment')} ${next.installment_no} · ${money(next.amount_due_thb)}`;
-    renderPaymentBox(next?.amount_due_thb || 0);
+    if (!$('#payView').classList.contains('hidden')) {
+      $('#paymentBox').classList.toggle('hidden', !next);
+      renderPaymentBox(next?.amount_due_thb || 0);
+    }
   }
   function applySchedule() {
     if (!cfg) return;
@@ -289,12 +293,17 @@
     try {
       alerts.loading(t('loading'));
       lookupIdDocument = $('#lookupId').value.trim();
+      lookup = null; $('#lookupResult').classList.add('hidden'); $('#paymentBox').classList.add('hidden');
       lookup = await api('lookup', { method: 'POST', body: { id_document: lookupIdDocument } });
       alerts.close(); renderLookup(lookup); alerts.toast('success', t('search'));
     } catch (err) {
-      alerts.close(); lookup = null; $('#lookupResult').classList.add('hidden');
+      alerts.close(); lookup = null; $('#lookupResult').classList.add('hidden'); $('#paymentBox').classList.add('hidden');
       await alerts.notice('error', u('invalid'), err.message);
     }
+  });
+  $('#lookupId').addEventListener('input', () => {
+    if (idKey($('#lookupId').value) === idKey(lookupIdDocument)) return;
+    lookup = null; $('#lookupResult').classList.add('hidden'); $('#paymentBox').classList.add('hidden');
   });
   $('#nextPaymentForm').addEventListener('submit', async event => {
     event.preventDefault(); if (!lookup?.next_installment_id || !await validForm(event.currentTarget)) return;
