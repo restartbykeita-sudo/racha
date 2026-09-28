@@ -70,6 +70,17 @@ async function administrator(req: Request, write = false) {
   if (write && profile.role !== 'ADMIN') throw new ApiError(403, 'ไม่มีสิทธิ์ดำเนินการ');
   return { id: user.id, role: profile.role };
 }
+async function exportRows(table: string, fields: string, role?: string) {
+  const rows: Record<string, unknown>[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    let query = db.from(table).select(fields).order('id').range(offset, offset + 999);
+    if (role) query = query.eq('role', role);
+    const { data, error } = await query;
+    if (error || !data) fail(503, 'เตรียมข้อมูลส่งออกไม่สำเร็จ กรุณาลองใหม่');
+    rows.push(...data);
+    if (data.length < 1000) return rows;
+  }
+}
 
 function validateRegistration(data: Record<string, unknown>, packageRow: Record<string, unknown>) {
   const runners = data.runners as Array<Record<string, unknown>>;
@@ -281,6 +292,15 @@ Deno.serve(async req => {
       if ([regs, people, dues, attempts, packages].some(x => x.error)) fail(503, 'โหลดรายการไม่สำเร็จ');
       return json({ role: admin.role, registrations: regs.data, participants: people.data,
         installments: dues.data, attempts: attempts.data, packages: packages.data, settings: s }, 200, origin);
+    }
+    if (action === 'admin-export' && req.method === 'GET') {
+      await administrator(req, true);
+      const [registrations, runners, beneficiaries] = await Promise.all([
+        exportRows('rrih_registrations', 'id,registration_code,package_code,package_name_snapshot,package_price_thb,payment_plan,language,consent_privacy_at,status,submitted_at'),
+        exportRows('rrih_participants', 'id,registration_id,runner_no,prefix,first_name,last_name,id_document,address,phone,emergency_phone,emergency_relation,blood_group,shirt_size', 'RUNNER'),
+        exportRows('rrih_beneficiaries', 'id,registration_id,runner_id,full_name,id_document,relationship,percentage'),
+      ]);
+      return json({ registrations, runners, beneficiaries }, 200, origin);
     }
     if (action === 'admin-accounts' && req.method === 'GET') {
       await administrator(req, true);

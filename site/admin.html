@@ -2,7 +2,7 @@
   <meta name="theme-color" content="#22183a"><title>แอดมิน · RESTART RACHA ISLAND HYBRID</title>
   <link rel="stylesheet" href="style.css"><script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"></script>
-  <script defer src="alerts.js"></script><script defer src="config.js"></script><script defer src="admin.js?v=20260928-admin-approval"></script>
+  <script defer src="alerts.js"></script><script defer src="config.js"></script><script defer src="export-xlsx.js?v=20260928-1"></script><script defer src="admin.js?v=20260928-export-1"></script>
 </head><body>
   <header class="site-header wrap"><a class="brand" href="./"><span class="brand-mark">R</span><span>RESTART <small>REGISTRATION ADMIN</small></span></a><div class="inline-actions"><a class="small-button" href="./">หน้าสมัคร</a><button id="signOut" class="small-button hidden" type="button">ออกจากระบบ</button></div></header>
   <main class="wrap"><div id="adminMessage" class="alert hidden" role="status"></div>
@@ -24,6 +24,7 @@
         <button type="button" class="active" data-page="applications">ใบสมัครและสลิป</button><button type="button" data-page="packages">แพ็กเกจ</button><button type="button" data-page="settings">ข้อมูลชำระ/กำหนดเวลา</button><button type="button" data-page="accounts" class="hidden">อนุมัติแอดมิน</button>
       </nav><div class="stack">
         <section id="applicationsPage" class="panel"><div class="section-heading"><b>01</b><div><h2>ใบสมัครและการชำระ</h2><p>ตรวจยอดกับบัญชีจริงก่อนกดอนุมัติสลิป</p></div></div>
+          <div class="inline-actions" style="margin-bottom:18px"><button id="exportRunners" class="small-button hidden" type="button">ดาวน์โหลด Excel รายชื่อผู้แข่งขันและผู้รับผลประโยชน์</button></div>
           <div class="form-grid"><label class="field"><span>กรองสถานะ</span><select id="statusFilter"><option value="all">ทั้งหมด</option><option value="review">รอตรวจสลิป</option><option value="wait2">รอชำระงวด 2</option><option value="wait3">รอชำระงวด 3</option><option value="overdue">เกินกำหนด</option><option value="complete">ชำระครบ</option></select></label>
             <label class="field"><span>ค้นหาชื่อ / เลขเอกสาร / รหัสสมัคร</span><input id="adminSearch" type="search"></label></div>
           <div class="table-wrap"><table class="data-table"><thead><tr><th>ผู้แข่งขัน / เอกสาร</th><th>แพ็กเกจ</th><th>งวด 1</th><th>งวด 2</th><th>งวด 3</th><th>จ่ายแล้ว / คงเหลือ</th><th>ตรวจสลิป</th></tr></thead><tbody id="registrationRows"></tbody></table></div>

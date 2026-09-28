@@ -52,6 +52,7 @@
     $('#loginSection').classList.add('hidden'); $('#registerSection').classList.add('hidden');
     $('#dashboard').classList.remove('hidden'); $('#signOut').classList.remove('hidden');
     $('.admin-nav [data-page="accounts"]').classList.toggle('hidden', snapshot.role !== 'ADMIN');
+    $('#exportRunners').classList.toggle('hidden', snapshot.role !== 'ADMIN');
     showMessage(''); render();
   }
   const indexed = rows => new Map((rows || []).map(row => [row.id, row]));
@@ -199,6 +200,21 @@
     } catch (err) { alerts.close(); button.disabled = false; showMessage(err.message); }
   });
   $('#statusFilter').addEventListener('change', render); $('#adminSearch').addEventListener('input', render);
+  $('#exportRunners').addEventListener('click', async event => {
+    const button = event.currentTarget; button.disabled = true;
+    try {
+      alerts.loading('กำลังเตรียมไฟล์รายชื่อ…');
+      const data = await api('admin-export', null, 'GET');
+      if (!window.RRIHExport) throw new Error('โหลดระบบส่งออกไม่สำเร็จ กรุณารีเฟรชหน้าเว็บ');
+      const report = window.RRIHExport.build(data);
+      const file = new Blob([report.bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a'), fileUrl = URL.createObjectURL(file);
+      link.href = fileUrl; link.download = report.filename; document.body.append(link);
+      link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(fileUrl), 60000);
+      alerts.close(); alerts.toast('success', `ส่งออกผู้แข่งขัน ${report.runnerCount} คน และผู้รับผลประโยชน์ ${report.beneficiaryCount} คน`);
+    } catch (err) { alerts.close(); showMessage(err.message); }
+    finally { button.disabled = false; }
+  });
   $('#registrationRows').addEventListener('click', async event => {
     const slip = event.target.closest('[data-slip]'), review = event.target.closest('[data-review]');
     try {
