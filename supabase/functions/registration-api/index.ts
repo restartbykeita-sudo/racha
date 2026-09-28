@@ -65,8 +65,9 @@ async function administrator(req: Request, write = false) {
   const user = auth.user;
   const { data: profile, error } = await db.from('rrih_admin_users')
     .select('role,active').eq('user_id', user.id).single();
-  if (error || !profile?.active || (write && profile.role !== 'ADMIN'))
-    throw new ApiError(403, 'ไม่มีสิทธิ์ดำเนินการ');
+  if (error || !profile) throw new ApiError(403, 'ไม่มีสิทธิ์ดำเนินการ');
+  if (!profile.active) throw new ApiError(403, 'บัญชีเจ้าหน้าที่กำลังรอแอดมินอนุมัติ');
+  if (write && profile.role !== 'ADMIN') throw new ApiError(403, 'ไม่มีสิทธิ์ดำเนินการ');
   return { id: user.id, role: profile.role };
 }
 
@@ -183,6 +184,25 @@ Deno.serve(async req => {
   const action = new URL(req.url).searchParams.get('action') || '';
   try {
     if (action === 'config' && req.method === 'GET') return json(await publicConfig(), 200, origin);
+    if (action === 'admin-register' && req.method === 'POST') {
+      await limit(req, action, 3);
+      const body = await req.json();
+      const email = text(body.email).toLowerCase(), password = String(body.password || '');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 ||
+          password.length < 10 || password.length > 128)
+        fail(400, 'กรุณากรอกอีเมลและรหัสผ่านอย่างน้อย 10 ตัวอักษร');
+      await limit(req, `${action}:${await hash(email)}`, 2);
+      const { data, error } = await db.auth.admin.createUser({ email, password, email_confirm: true });
+      if (error || !data.user) fail(409, 'ไม่สามารถสมัครด้วยอีเมลนี้ได้ อาจมีบัญชีอยู่แล้ว');
+      const { error: profileError } = await db.from('rrih_admin_users').insert({
+        user_id: data.user.id, role: 'ADMIN', active: false,
+      });
+      if (profileError) {
+        await db.auth.admin.deleteUser(data.user.id);
+        fail(503, 'บันทึกคำขอไม่สำเร็จ กรุณาลองใหม่');
+      }
+      return json({ pending: true }, 201, origin);
+    }
     if (action === 'availability' && req.method === 'POST') {
       await limit(req, action, 15);
       const body = await req.json(), id = normalizeId(body.id_document);
@@ -261,6 +281,27 @@ Deno.serve(async req => {
       if ([regs, people, dues, attempts, packages].some(x => x.error)) fail(503, 'โหลดรายการไม่สำเร็จ');
       return json({ role: admin.role, registrations: regs.data, participants: people.data,
         installments: dues.data, attempts: attempts.data, packages: packages.data, settings: s }, 200, origin);
+    }
+    if (action === 'admin-accounts' && req.method === 'GET') {
+      await administrator(req, true);
+      const { data: profiles, error } = await db.from('rrih_admin_users')
+        .select('user_id,role,active,created_at').order('created_at', { ascending: false }).limit(200);
+      if (error) fail(503, 'โหลดบัญชีเจ้าหน้าที่ไม่สำเร็จ');
+      const accounts = await Promise.all((profiles || []).map(async profile => {
+        const { data } = await db.auth.admin.getUserById(profile.user_id);
+        return { ...profile, email: data.user?.email || 'ไม่พบอีเมล' };
+      }));
+      return json({ accounts }, 200, origin);
+    }
+    if (action === 'admin-approve' && req.method === 'POST') {
+      await administrator(req, true);
+      const body = await req.json();
+      if (!/^[0-9a-f-]{36}$/i.test(String(body.user_id || ''))) fail(400, 'บัญชีไม่ถูกต้อง');
+      const { data, error } = await db.from('rrih_admin_users')
+        .update({ active: true }).eq('user_id', body.user_id).eq('role', 'ADMIN')
+        .eq('active', false).select('user_id').single();
+      if (error || !data) fail(409, 'คำขอนี้ไม่อยู่ในสถานะรออนุมัติ');
+      return json({ approved: true }, 200, origin);
     }
     if (action === 'admin-slip' && req.method === 'POST') {
       await administrator(req);

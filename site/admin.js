@@ -35,9 +35,23 @@
     if (!response.ok) throw new Error(result.error || 'ดำเนินการไม่สำเร็จ');
     return result;
   }
+  async function publicApi(action, body) {
+    const response = await fetch(`${cfg.SUPABASE_URL}/functions/v1/registration-api?action=${action}`,
+      { method: 'POST', headers: { apikey: cfg.PUBLISHABLE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body) });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'ส่งคำขอไม่สำเร็จ');
+    return result;
+  }
+  function showAuthPage(page) {
+    $('#loginSection').classList.toggle('hidden', page !== 'login');
+    $('#registerSection').classList.toggle('hidden', page !== 'register');
+  }
   async function load() {
     snapshot = await api('admin-overview', null, 'GET');
-    $('#loginSection').classList.add('hidden'); $('#dashboard').classList.remove('hidden'); $('#signOut').classList.remove('hidden');
+    $('#loginSection').classList.add('hidden'); $('#registerSection').classList.add('hidden');
+    $('#dashboard').classList.remove('hidden'); $('#signOut').classList.remove('hidden');
+    $('.admin-nav [data-page="accounts"]').classList.toggle('hidden', snapshot.role !== 'ADMIN');
     showMessage(''); render();
   }
   const indexed = rows => new Map((rows || []).map(row => [row.id, row]));
@@ -113,6 +127,17 @@
     for (const current of [form, schedule])
       [...current.elements].forEach(el => { el.disabled = snapshot.role !== 'ADMIN'; });
   }
+  async function loadAccounts() {
+    $('#accountList').textContent = 'กำลังโหลดบัญชี…';
+    const { accounts } = await api('admin-accounts', null, 'GET');
+    const pending = accounts.filter(account => !account.active && account.role === 'ADMIN');
+    const active = accounts.filter(account => account.active && account.role === 'ADMIN');
+    const row = account => `<div class="person-card"><strong>${escape(account.email)}</strong>
+      <p class="muted">${account.active ? 'อนุมัติแล้ว' : 'รออนุมัติ'} · สมัคร ${escape(new Date(account.created_at).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }))}</p>
+      ${account.active || account.email === 'ไม่พบอีเมล' ? '' : `<button class="primary" type="button" data-approve-user="${escape(account.user_id)}" data-email="${escape(account.email)}">อนุมัติเป็นแอดมิน</button>`}</div>`;
+    $('#accountList').innerHTML = `<h3>รออนุมัติ (${pending.length})</h3>${pending.map(row).join('') || '<p class="muted">ไม่มีคำขอรออนุมัติ</p>'}
+      <h3>แอดมินที่ใช้งานได้ (${active.length})</h3>${active.map(row).join('')}`;
+  }
   async function init() {
     if (!cfg?.SUPABASE_URL || !cfg?.PUBLISHABLE_KEY) { showMessage('ยังไม่ได้ตั้งค่า URL และ Publishable Key ของ Supabase โปรเจกต์งานสมัคร'); return; }
     if (!window.supabase) { showMessage('โหลดระบบเข้าสู่ระบบไม่สำเร็จ'); return; }
@@ -131,12 +156,48 @@
       currentUser = data.user; $('#adminPassword').value = ''; await load(); alerts.close();
     } catch (err) { alerts.close(); showMessage(err.message); button.disabled = false; }
   });
+  $('#showRegister').addEventListener('click', () => showAuthPage('register'));
+  $('#showLogin').addEventListener('click', () => showAuthPage('login'));
+  $('#registerForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!client || !await validForm(form)) return;
+    const email = form.elements.email.value.trim();
+    const password = form.elements.password.value;
+    if (password !== form.elements.confirm_password.value) {
+      await alerts.notice('warning', 'รหัสผ่านไม่ตรงกัน', 'กรุณากรอกรหัสผ่านและยืนยันให้ตรงกัน'); return;
+    }
+    const button = form.querySelector('button[type="submit"]'); button.disabled = true;
+    try {
+      alerts.loading('กำลังส่งคำขอ…');
+      await publicApi('admin-register', { email, password });
+      form.reset(); $('#adminEmail').value = email; showAuthPage('login');
+      alerts.close(); await alerts.notice('success', 'สมัครสำเร็จ', 'บัญชีกำลังรอแอดมินอนุมัติ เมื่อได้รับอนุมัติแล้วให้เข้าสู่ระบบด้วยรหัสผ่านที่ตั้งไว้');
+    } catch (err) { alerts.close(); showMessage(err.message); }
+    finally { button.disabled = false; }
+  });
   $('#signOut').addEventListener('click', async () => { await client.auth.signOut(); location.reload(); });
   document.querySelectorAll('.admin-nav button').forEach(button => button.addEventListener('click', () => {
+    if (button.classList.contains('hidden')) return;
     document.querySelectorAll('.admin-nav button').forEach(x => x.classList.toggle('active', x === button));
-    for (const name of ['applications','packages','settings'])
+    for (const name of ['applications','packages','settings','accounts'])
       $(`#${name}Page`).classList.toggle('hidden', name !== button.dataset.page);
+    if (button.dataset.page === 'accounts') loadAccounts().catch(err => showMessage(err.message));
   }));
+  $('#accountList').addEventListener('click', async event => {
+    const button = event.target.closest('[data-approve-user]');
+    if (!button) return;
+    const choice = await alerts.fire({ icon: 'question', title: 'อนุมัติแอดมิน?',
+      text: `ตรวจสอบแล้วว่า ${button.dataset.email} เป็นคนที่ต้องการให้เข้าถึงใบสมัครและการชำระเงิน`,
+      showCancelButton: true, confirmButtonText: 'อนุมัติ', cancelButtonText: 'ยกเลิก' });
+    if (!choice.isConfirmed) return;
+    button.disabled = true;
+    try {
+      alerts.loading('กำลังอนุมัติ…');
+      await api('admin-approve', { user_id: button.dataset.approveUser });
+      await loadAccounts(); alerts.close(); showMessage('อนุมัติบัญชีแอดมินแล้ว', 'success');
+    } catch (err) { alerts.close(); button.disabled = false; showMessage(err.message); }
+  });
   $('#statusFilter').addEventListener('change', render); $('#adminSearch').addEventListener('input', render);
   $('#registrationRows').addEventListener('click', async event => {
     const slip = event.target.closest('[data-slip]'), review = event.target.closest('[data-review]');

@@ -2,17 +2,26 @@
   <meta name="theme-color" content="#22183a"><title>แอดมิน · RESTART RACHA ISLAND HYBRID</title>
   <link rel="stylesheet" href="style.css"><script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"></script>
-  <script defer src="alerts.js"></script><script defer src="config.js"></script><script defer src="admin.js"></script>
+  <script defer src="alerts.js"></script><script defer src="config.js"></script><script defer src="admin.js?v=20260928-admin-approval"></script>
 </head><body>
   <header class="site-header wrap"><a class="brand" href="./"><span class="brand-mark">R</span><span>RESTART <small>REGISTRATION ADMIN</small></span></a><div class="inline-actions"><a class="small-button" href="./">หน้าสมัคร</a><button id="signOut" class="small-button hidden" type="button">ออกจากระบบ</button></div></header>
   <main class="wrap"><div id="adminMessage" class="alert hidden" role="status"></div>
     <section id="loginSection" class="panel" style="max-width:440px;margin:45px auto"><h1>เข้าสู่ระบบเจ้าหน้าที่</h1><p class="muted">ใช้บัญชีที่ได้รับสิทธิ์จัดการงานนี้</p>
       <form id="loginForm" class="stack" novalidate><label class="field"><span>อีเมล</span><input id="adminEmail" type="email" autocomplete="username" required></label>
         <label class="field"><span>รหัสผ่าน</span><input id="adminPassword" type="password" autocomplete="current-password" required></label>
-        <button class="primary" type="submit">เข้าสู่ระบบ</button><p id="loginMessage" class="feedback" role="status"></p></form></section>
+        <button class="primary" type="submit">เข้าสู่ระบบ</button><p id="loginMessage" class="feedback" role="status"></p></form>
+      <p class="muted">ต้องการเป็นเจ้าหน้าที่? <button id="showRegister" class="small-button" type="button">สมัครบัญชีเจ้าหน้าที่</button></p></section>
+    <section id="registerSection" class="panel hidden" style="max-width:440px;margin:45px auto"><h1>สมัครบัญชีเจ้าหน้าที่</h1>
+      <p class="muted">กรอกอีเมลและตั้งรหัสผ่าน จากนั้นรอแอดมินอนุมัติจึงจะเข้าถึงข้อมูลได้</p>
+      <form id="registerForm" class="stack" novalidate>
+        <label class="field"><span>อีเมล</span><input name="email" type="email" autocomplete="email" required></label>
+        <label class="field"><span>รหัสผ่าน (อย่างน้อย 10 ตัวอักษร)</span><input name="password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+        <label class="field"><span>ยืนยันรหัสผ่าน</span><input name="confirm_password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+        <button class="primary" type="submit">ส่งคำขอสมัครแอดมิน</button></form>
+      <p class="muted"><button id="showLogin" class="small-button" type="button">กลับไปเข้าสู่ระบบ</button></p></section>
     <section id="dashboard" class="hidden"><div class="section-heading"><b>ADMIN</b><div><h1 style="margin:0">ติดตามการสมัครและการชำระ</h1><p class="muted">RESTART RACHA ISLAND HYBRID</p></div></div>
       <div id="metrics" class="metrics"></div><div class="admin-layout" style="margin-top:18px"><nav class="admin-nav" aria-label="Admin sections">
-        <button type="button" class="active" data-page="applications">ใบสมัครและสลิป</button><button type="button" data-page="packages">แพ็กเกจ</button><button type="button" data-page="settings">ข้อมูลชำระ/กำหนดเวลา</button>
+        <button type="button" class="active" data-page="applications">ใบสมัครและสลิป</button><button type="button" data-page="packages">แพ็กเกจ</button><button type="button" data-page="settings">ข้อมูลชำระ/กำหนดเวลา</button><button type="button" data-page="accounts" class="hidden">อนุมัติแอดมิน</button>
       </nav><div class="stack">
         <section id="applicationsPage" class="panel"><div class="section-heading"><b>01</b><div><h2>ใบสมัครและการชำระ</h2><p>ตรวจยอดกับบัญชีจริงก่อนกดอนุมัติสลิป</p></div></div>
           <div class="form-grid"><label class="field"><span>กรองสถานะ</span><select id="statusFilter"><option value="all">ทั้งหมด</option><option value="review">รอตรวจสลิป</option><option value="wait2">รอชำระงวด 2</option><option value="wait3">รอชำระงวด 3</option><option value="overdue">เกินกำหนด</option><option value="complete">ชำระครบ</option></select></label>
@@ -35,6 +44,9 @@
           <label class="field"><span>มัดจำงวด 1 (บาท)</span><input name="deposit_thb" type="number" min="1" required></label><label class="field"><span>งวด 2 (บาท)</span><input name="second_thb" type="number" min="1" required></label>
           <label class="field"><span>ขนาดสลิปสูงสุด (MB)</span><input name="max_slip_mb" type="number" min="1" max="10" required></label>
           <button class="primary" type="submit">บันทึกการตั้งค่า</button></form></section>
+        <section id="accountsPage" class="panel hidden"><h2>คำขอสมัครแอดมิน</h2>
+          <p class="muted">ผู้สมัครตั้งรหัสผ่านเองและยังไม่ได้ยืนยันอีเมล โปรดตรวจว่าเป็นคนที่คุณต้องการให้สิทธิ์ก่อนอนุมัติ</p>
+          <div id="accountList" class="stack" aria-live="polite"></div></section>
       </div></div></section>
   </main>
   <div id="slipModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="ตรวจสลิป"><div class="panel"><div class="modal-top"><h2>หลักฐานการชำระ</h2><button id="closeModal" type="button" aria-label="ปิด">×</button></div><div id="slipContent"></div></div></div>
