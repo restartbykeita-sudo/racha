@@ -235,9 +235,9 @@ Deno.serve(async req => {
       if (!pkg) fail(400, 'แพ็กเกจไม่พร้อมใช้งาน');
       validateRegistration(data, pkg);
       const s = await settings(), { file, ext } = await checkedSlip(form, s.max_slip_mb);
-      const expected = data.payment_plan === 'FULL' ? pkg.price_thb :
-        Math.floor(pkg.price_thb / 300) * 100;
-      if (Number(data.amount_confirmed_thb) !== expected) fail(400, 'ยอดชำระไม่ตรงกับแพ็กเกจ');
+      const expected = data.payment_plan === 'FULL' ? pkg.price_thb : 3000;
+      if (Number(data.amount_confirmed_thb) !== expected)
+        fail(400, 'ยอดชำระไม่ตรงกับแพ็กเกจ กรุณารีเฟรชหน้าและตรวจยอดก่อนโอน');
       const bytes = crypto.getRandomValues(new Uint8Array(16));
       const code = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
       const path = await upload(file, ext);

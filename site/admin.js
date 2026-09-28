@@ -5,7 +5,7 @@
     c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
   const money = value => `${Number(value || 0).toLocaleString('th-TH')} ฿`;
   const installmentAmounts = price => {
-    const first = Math.floor(price / 300) * 100;
+    const first = 3000;
     const second = Math.floor((price - first) / 200) * 100;
     return [first, second, price - first - second];
   };
