@@ -3,9 +3,9 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#22183a"><meta name="description" content="สมัครแข่งขัน RESTART RACHA ISLAND HYBRID 7–8 พฤศจิกายน 2569">
   <title>สมัครแข่งขัน · RESTART RACHA ISLAND HYBRID</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260928-shirt-sizes-1">
   <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"></script>
-  <script defer src="alerts.js"></script><script defer src="config.js"></script><script defer src="app.js?v=20260928-id-only-2"></script>
+  <script defer src="alerts.js"></script><script defer src="config.js"></script><script defer src="app.js?v=20260928-shirt-sizes-1"></script>
 </head><body>
   <header class="site-header wrap">
     <a class="brand" href="./" aria-label="RESTART RACHA ISLAND HYBRID"><span class="brand-mark">R</span><span>RESTART <small>RACHA ISLAND HYBRID</small></span></a>
@@ -25,7 +25,9 @@
         <section class="panel"><div class="section-heading"><b>01</b><div><h2 data-i18n="choosePackage">เลือกแพ็กเกจ</h2><p data-i18n="packageHint">ราคานี้เป็นยอดรวมของทั้งแพ็กเกจ</p></div></div>
           <div id="packages" class="package-grid"></div></section>
         <section class="panel"><div class="section-heading"><b>02</b><div><h2 data-i18n="participants">ข้อมูลผู้แข่งขัน</h2><p data-i18n="participantHint">ระบุข้อมูลตามจำนวนคนในแพ็กเกจ</p></div></div>
-          <div id="runners" class="stack"></div><div id="followers" class="stack"></div></section>
+          <div class="shirt-guide"><h3 id="shirtGuideTitle">ตารางไซส์เสื้อ (นิ้ว)</h3>
+            <div class="table-wrap"><table class="shirt-table"><thead><tr><th id="shirtSizeHeading">ไซส์</th><th id="shirtChestHeading">รอบอก (นิ้ว)</th><th id="shirtLengthHeading">ความยาว (นิ้ว)</th></tr></thead><tbody id="shirtSizeRows"></tbody></table></div>
+          </div><div id="runners" class="stack"></div><div id="followers" class="stack"></div></section>
         <section class="panel"><div class="section-heading"><b>03</b><div><h2 data-i18n="beneficiaries">ผู้รับผลประโยชน์</h2><p data-i18n="beneficiaryHint">ของแต่ละผู้แข่งขันต้องรวม 100%</p></div></div>
           <div id="beneficiaryGroups" class="stack"></div></section>
         <section class="panel"><div class="section-heading"><b>04</b><div><h2 data-i18n="payment">ชำระเงิน</h2><p data-i18n="paymentHint">เลือกจ่ายเต็มหรือผ่อน 3 งวด</p></div></div>

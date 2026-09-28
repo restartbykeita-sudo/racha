@@ -30,6 +30,27 @@
     ru: { MR:'г-н', MRS:'г-жа (замужем)', MS:'г-жа', MASTER:'мальчик', MISS:'девочка' },
     ja: { MR:'ミスター', MRS:'ミセス', MS:'ミズ', MASTER:'男児', MISS:'女児' },
   };
+  const shirtWords = {
+    th:{ size:'ไซส์',chest:'รอบอก',length:'ความยาว',unit:'นิ้ว',guide:'ตารางไซส์เสื้อ (นิ้ว)' },
+    en:{ size:'Size',chest:'Chest',length:'Length',unit:'in',guide:'Shirt size guide (inches)' },
+    zh:{ size:'尺码',chest:'胸围',length:'衣长',unit:'英寸',guide:'衣服尺码表（英寸）' },
+    ru:{ size:'Размер',chest:'Обхват груди',length:'Длина',unit:'дюйм',guide:'Размеры футболки (дюймы)' },
+    ja:{ size:'サイズ',chest:'胸囲',length:'着丈',unit:'インチ',guide:'シャツサイズ表（インチ）' },
+  };
+  const shirtTerm = key => shirtWords[language][key];
+  const shirtSizes = () => (cfg?.shirt_sizes || []).filter(s => s.chest_in > 0 && s.length_in > 0);
+  const shirtOptions = () => shirtSizes()
+    .map(s => {
+      return `<option value="${escape(s.code)}">${escape(s.code)} · ${escape(shirtTerm('chest'))} ${s.chest_in} ${escape(shirtTerm('unit'))} · ${escape(shirtTerm('length'))} ${s.length_in} ${escape(shirtTerm('unit'))}</option>`;
+    }).join('');
+  function renderShirtGuide() {
+    $('#shirtGuideTitle').textContent = shirtTerm('guide');
+    $('#shirtSizeHeading').textContent = shirtTerm('size');
+    $('#shirtChestHeading').textContent = `${shirtTerm('chest')} (${shirtTerm('unit')})`;
+    $('#shirtLengthHeading').textContent = `${shirtTerm('length')} (${shirtTerm('unit')})`;
+    $('#shirtSizeRows').innerHTML = shirtSizes().map(s =>
+      `<tr><th scope="row">${escape(s.code)}</th><td>${s.chest_in}</td><td>${s.length_in}</td></tr>`).join('');
+  }
   const prefixOptions = () => `<option value="">—</option>${Object.entries(titles[language]).map(([code, name]) =>
     `<option value="${code}">${escape(name)}</option>`).join('')}`;
   const u = key => ui[language]?.[key] || ui.en[key];
@@ -67,6 +88,12 @@
       select.innerHTML = prefixOptions();
       select.value = chosen;
     });
+    all('#runners select[name="shirt_size"]').forEach(select => {
+      const chosen = select.value;
+      select.innerHTML = `<option value="">—</option>${shirtOptions()}`;
+      select.value = chosen;
+    });
+    renderShirtGuide();
     all('#runners .runner').forEach((runner, i) => { runner.querySelector('h3').textContent = `${t('runner')} ${i + 1}`; });
     all('#followers .follower').forEach(follower => { follower.querySelector('h3').textContent = t('follower'); });
     all('.beneficiary-group').forEach((group, i) => { group.querySelector('h3').textContent = `${t('runner')} ${i + 1}`; });
@@ -76,7 +103,7 @@
   const label = (key, name, value = '', type = 'text', extra = '') =>
     `<label class="field"><span data-i18n="${key}">${escape(t(key))}</span><input name="${name}" type="${type}" value="${escape(value)}" ${extra}></label>`;
   function runnerHtml(no) {
-    const shirts = cfg.shirt_sizes.map(s => `<option value="${escape(s.code)}">${escape(s.label)}</option>`).join('');
+    const shirts = shirtOptions();
     return `<div class="person-card runner" data-no="${no}"><h3>${escape(t('runner'))} ${no}</h3><div class="form-grid">
       <label class="field"><span data-i18n="prefix">${escape(t('prefix'))}</span><select name="prefix" required>${prefixOptions()}</select></label>
       ${label('firstName','first_name','','text','required')}${label('lastName','last_name','','text','required')}
@@ -102,6 +129,7 @@
   }
   function renderPeople() {
     if (!selected) return;
+    renderShirtGuide();
     $('#runners').innerHTML = Array.from({ length: selected.runner_count }, (_, i) => runnerHtml(i + 1)).join('');
     $('#followers').innerHTML = Array.from({ length: selected.follower_count }, followerHtml).join('');
     $('#beneficiaryGroups').innerHTML = Array.from({ length: selected.runner_count }, (_, i) =>

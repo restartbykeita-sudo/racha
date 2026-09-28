@@ -43,7 +43,7 @@ async function settings() {
 async function publicConfig() {
   const [s, packages, sizes] = await Promise.all([
     settings(), db.from('rrih_packages').select('*').eq('active', true).order('sort_order'),
-    db.from('rrih_shirt_sizes').select('code,label').eq('active', true).order('sort_order'),
+    db.from('rrih_shirt_sizes').select('code,label,chest_in,length_in').eq('active', true).order('sort_order'),
   ]);
   if (packages.error || sizes.error) fail(503, 'โหลดข้อมูลสมัครไม่สำเร็จ');
   return { event: s.event_name, registration_opens_at: s.registration_opens_at,
