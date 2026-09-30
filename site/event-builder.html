@@ -365,6 +365,7 @@ async function duplicateEvent(){
  for(var pi=0;pi<related.packages.length;pi++){var rp=related.packages[pi],po=Object.assign({},rp);delete po.id;po.event_id=id;po.category_id=rp.category_id?catMap[rp.category_id]||null:null;var pq=await client.from('restart_packages').insert(po).select().single();if(pq.error)throw pq.error;pkgMap[rp.id]=pq.data.id;}
 
  for(var mi=0;mi<related.payments.length;mi++){var pm=related.payments[mi],mo=Object.assign({},pm);delete mo.id;mo.event_id=id;var mq=await client.from('restart_payment_methods').insert(mo);if(mq.error)throw mq.error;}
+ if((related.media||[]).length){var mediaRows=(related.media||[]).map(function(m){return {event_id:id,media_type:m.media_type,url:m.url,alt_text:m.alt_text,sort_order:m.sort_order,is_active:m.is_active};});var medq=await client.from('restart_event_media').insert(mediaRows);if(medq.error)throw medq.error;}
 
  for(var li=0;li<related.plans.length;li++){
   var op=related.plans[li],np=Object.assign({},op);delete np.id;np.event_id=id;np.category_id=op.category_id?catMap[op.category_id]||null:null;np.package_id=op.package_id?pkgMap[op.package_id]||null:null;
