@@ -132,7 +132,7 @@
         </div>
         <div id="themeTab" class="tab-page hidden">
           <form id="themeForm" class="stack">
-            <div class="builder-card"><h3>สีและรูปแบบ</h3><div id="themeColors" class="color-row"></div></div>
+            <div class="builder-card"><h3>สีและรูปแบบ</h3><label class="field" style="max-width:320px"><span>Theme Preset</span><select id="themeTemplate"><option value="luxury">Luxury</option><option value="minimal">Minimal</option><option value="sport">Sport</option><option value="dark">Dark</option><option value="tropical">Tropical</option><option value="custom">Custom</option></select></label><div id="themeColors" class="color-row" style="margin-top:14px"></div></div>
             <div class="builder-card"><h3>Logo และ Banner</h3>
               <div class="record-grid">
                 <label class="field"><span>Logo</span><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"><img id="logoPreview" class="media-preview hidden" alt="Logo"></label>
@@ -171,6 +171,13 @@ var FEATURES={
 };
 var LANGS={th:'ไทย',en:'English',zh:'中文',ja:'日本語',ru:'Русский'};
 var THEME_KEYS={primary:'สีหลัก',secondary:'สีรอง',background:'พื้นหลัง',surface:'พื้น Card',text:'ตัวอักษร',muted:'ข้อความรอง',accent:'Accent'};
+var THEME_PRESETS={
+ luxury:{primary:'#e96d96',secondary:'#7044c0',background:'#100d1d',surface:'#1d192c',text:'#f7f3ff',muted:'#bdb5ca',accent:'#ffb097'},
+ minimal:{primary:'#111827',secondary:'#6b7280',background:'#f8fafc',surface:'#ffffff',text:'#111827',muted:'#64748b',accent:'#2563eb'},
+ sport:{primary:'#ef4444',secondary:'#f97316',background:'#0f172a',surface:'#1e293b',text:'#f8fafc',muted:'#cbd5e1',accent:'#facc15'},
+ dark:{primary:'#a855f7',secondary:'#6366f1',background:'#05070b',surface:'#111827',text:'#f9fafb',muted:'#9ca3af',accent:'#22d3ee'},
+ tropical:{primary:'#ec4899',secondary:'#8b5cf6',background:'#1b1034',surface:'#281749',text:'#fff7ed',muted:'#d8b4fe',accent:'#fb923c'}
+};
 
 function notice(msg,icon){if(msg)alerts.notice(icon||'error',icon==='success'?'สำเร็จ':'แจ้งเตือน',msg);}
 async function ensureAuth(){
@@ -314,6 +321,7 @@ function renderInstallmentSteps(){
 }
 function renderTheme(){
  var th=current.theme||{};
+ $('#themeTemplate').value=th.template||'luxury';
  $('#themeColors').innerHTML=Object.keys(THEME_KEYS).map(function(k){return '<label class="field"><span>'+esc(THEME_KEYS[k])+'</span><input name="'+k+'" type="color" value="'+esc(th[k]||'#000000')+'"></label>';}).join('');
  [['logoPreview',current.logo_url],['bannerPreview',current.banner_url]].forEach(function(x){var el=$('#'+x[0]); if(x[1]){el.src=x[1];el.classList.remove('hidden');}else el.classList.add('hidden');});
  $('#mediaList').innerHTML=(related.media||[]).length?(related.media||[]).map(function(m){return '<div class="builder-card"><img class="media-preview" src="'+esc(m.url)+'" alt=""><div class="toolbar" style="margin-top:8px;margin-bottom:0"><small>'+esc(m.media_type)+'</small><button type="button" class="small-button mini-danger" data-delete-media="'+m.id+'">ลบ</button></div></div>';}).join(''):'<div class="empty">ยังไม่มีภาพเพิ่มเติม</div>';
@@ -456,7 +464,7 @@ async function addExtraMedia(){
  input.value='';await selectEvent(current.id);alerts.close();alerts.toast('success','เพิ่มภาพแล้ว');
 }
 async function saveTheme(e){
- e.preventDefault();alerts.loading('กำลังบันทึก Theme…');var theme=Object.assign({},current.theme||{});Object.keys(THEME_KEYS).forEach(function(k){theme[k]=document.querySelector('#themeColors [name="'+k+'"]').value;});
+ e.preventDefault();alerts.loading('กำลังบันทึก Theme…');var theme=Object.assign({},current.theme||{});theme.template=$('#themeTemplate').value;Object.keys(THEME_KEYS).forEach(function(k){theme[k]=document.querySelector('#themeColors [name="'+k+'"]').value;});
  var logo=await uploadImage($('#logoFile'),'LOGO'),banner=await uploadImage($('#bannerFile'),'BANNER'),payload={theme:theme,updated_at:new Date().toISOString()};if(logo)payload.logo_url=logo;if(banner)payload.banner_url=banner;
  var q=await client.from('restart_events').update(payload).eq('id',current.id).select().single();if(q.error){alerts.close();throw q.error;}current=q.data;events=events.map(function(x){return x.id===current.id?current:x;});alerts.close();renderTheme();alerts.toast('success','บันทึก Theme แล้ว');
 }
@@ -513,6 +521,7 @@ $('#bankForm').addEventListener('submit',function(e){e.preventDefault();savePaym
 $('#promptpayForm').addEventListener('submit',function(e){e.preventDefault();savePayment('PROMPTPAY',e.currentTarget).catch(function(x){notice(x.message);});});
 $('#installmentCount').addEventListener('input',renderInstallmentSteps);
 $('#saveInstallment').addEventListener('click',function(){saveInstallment().catch(function(x){notice(x.message);});});
+$('#themeTemplate').addEventListener('change',function(){var preset=THEME_PRESETS[this.value];if(!preset)return;Object.keys(THEME_KEYS).forEach(function(k){var el=document.querySelector('#themeColors [name="'+k+'"]');if(el&&preset[k])el.value=preset[k];});});
 $('#uploadExtraMedia').addEventListener('click',function(){addExtraMedia().catch(function(x){alerts.close();notice(x.message);});});
 $('#mediaList').addEventListener('click',function(e){var b=e.target.closest('[data-delete-media]');if(b)remove('restart_event_media',b.dataset.deleteMedia,'ลบภาพนี้?').catch(function(x){notice(x.message);});});
 $('#themeForm').addEventListener('submit',function(e){saveTheme(e).catch(function(x){alerts.close();notice(x.message);});});
