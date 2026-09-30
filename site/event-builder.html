@@ -139,6 +139,11 @@
                 <label class="field"><span>Banner</span><input id="bannerFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"><img id="bannerPreview" class="media-preview hidden" alt="Banner"></label>
               </div>
             </div>
+            <div class="builder-card"><div class="toolbar"><div><h3 style="margin:0">ภาพเพิ่มเติม / Sponsor</h3><p class="muted">เพิ่มภาพประกอบ, Sponsor Logo หรือ Background ได้ไม่จำกัด</p></div></div>
+              <div class="record-grid"><label class="field"><span>ประเภท</span><select id="extraMediaType"><option value="SPONSOR">Sponsor Logo</option><option value="GALLERY">Gallery / ภาพประกอบ</option><option value="BACKGROUND">Background</option></select></label><label class="field"><span>เลือกภาพ</span><input id="extraMediaFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></label></div>
+              <button id="uploadExtraMedia" class="small-button" type="button">+ เพิ่มภาพ</button>
+              <div id="mediaList" class="record-grid" style="margin-top:14px"></div>
+            </div>
             <button class="primary" type="submit">บันทึก Theme / ภาพ</button>
           </form>
         </div>
@@ -202,10 +207,11 @@ async function selectEvent(id){
   client.from('restart_installment_plans').select('*').eq('event_id',id).order('priority',{ascending:false}),
   client.from('restart_registrations').select('*').eq('event_id',id).order('created_at',{ascending:false}),
   client.from('restart_participants').select('*').eq('event_id',id).order('runner_index'),
-  client.from('restart_event_translations').select('*').eq('event_id',id)
+  client.from('restart_event_translations').select('*').eq('event_id',id),
+  client.from('restart_event_media').select('*').eq('event_id',id).order('sort_order')
  ]);
  data.forEach(function(x){if(x.error)throw x.error;});
- related={sections:data[0].data||[],fields:data[1].data||[],categories:data[2].data||[],packages:data[3].data||[],payments:data[4].data||[],plans:data[5].data||[],registrations:data[6].data||[],participants:data[7].data||[],translations:data[8].data||[],schedules:[],attempts:[]};
+ related={sections:data[0].data||[],fields:data[1].data||[],categories:data[2].data||[],packages:data[3].data||[],payments:data[4].data||[],plans:data[5].data||[],registrations:data[6].data||[],participants:data[7].data||[],translations:data[8].data||[],media:data[9].data||[],schedules:[],attempts:[]};
  await loadSteps();
  await loadRegistrationPayments();
  renderAll();
@@ -310,6 +316,7 @@ function renderTheme(){
  var th=current.theme||{};
  $('#themeColors').innerHTML=Object.keys(THEME_KEYS).map(function(k){return '<label class="field"><span>'+esc(THEME_KEYS[k])+'</span><input name="'+k+'" type="color" value="'+esc(th[k]||'#000000')+'"></label>';}).join('');
  [['logoPreview',current.logo_url],['bannerPreview',current.banner_url]].forEach(function(x){var el=$('#'+x[0]); if(x[1]){el.src=x[1];el.classList.remove('hidden');}else el.classList.add('hidden');});
+ $('#mediaList').innerHTML=(related.media||[]).length?(related.media||[]).map(function(m){return '<div class="builder-card"><img class="media-preview" src="'+esc(m.url)+'" alt=""><div class="toolbar" style="margin-top:8px;margin-bottom:0"><small>'+esc(m.media_type)+'</small><button type="button" class="small-button mini-danger" data-delete-media="'+m.id+'">ลบ</button></div></div>';}).join(''):'<div class="empty">ยังไม่มีภาพเพิ่มเติม</div>';
 }
 
 async function createEvent(){
@@ -441,6 +448,12 @@ async function uploadImage(input,kind){
  var up=await client.storage.from('restart-event-media').upload(path,file,{cacheControl:'3600',upsert:false});if(up.error)throw up.error;
  return client.storage.from('restart-event-media').getPublicUrl(path).data.publicUrl;
 }
+async function addExtraMedia(){
+ var input=$('#extraMediaFile');if(!input.files||!input.files[0])throw new Error('กรุณาเลือกภาพ');
+ var type=$('#extraMediaType').value;alerts.loading('กำลังอัปโหลดภาพ…');var url=await uploadImage(input,type);
+ var q=await client.from('restart_event_media').insert({event_id:current.id,media_type:type,url:url,sort_order:(related.media||[]).length*10+10,is_active:true});if(q.error)throw q.error;
+ input.value='';await selectEvent(current.id);alerts.close();alerts.toast('success','เพิ่มภาพแล้ว');
+}
 async function saveTheme(e){
  e.preventDefault();alerts.loading('กำลังบันทึก Theme…');var theme=Object.assign({},current.theme||{});Object.keys(THEME_KEYS).forEach(function(k){theme[k]=document.querySelector('#themeColors [name="'+k+'"]').value;});
  var logo=await uploadImage($('#logoFile'),'LOGO'),banner=await uploadImage($('#bannerFile'),'BANNER'),payload={theme:theme,updated_at:new Date().toISOString()};if(logo)payload.logo_url=logo;if(banner)payload.banner_url=banner;
@@ -499,6 +512,8 @@ $('#bankForm').addEventListener('submit',function(e){e.preventDefault();savePaym
 $('#promptpayForm').addEventListener('submit',function(e){e.preventDefault();savePayment('PROMPTPAY',e.currentTarget).catch(function(x){notice(x.message);});});
 $('#installmentCount').addEventListener('input',renderInstallmentSteps);
 $('#saveInstallment').addEventListener('click',function(){saveInstallment().catch(function(x){notice(x.message);});});
+$('#uploadExtraMedia').addEventListener('click',function(){addExtraMedia().catch(function(x){alerts.close();notice(x.message);});});
+$('#mediaList').addEventListener('click',function(e){var b=e.target.closest('[data-delete-media]');if(b)remove('restart_event_media',b.dataset.deleteMedia,'ลบภาพนี้?').catch(function(x){notice(x.message);});});
 $('#themeForm').addEventListener('submit',function(e){saveTheme(e).catch(function(x){alerts.close();notice(x.message);});});
 
 document.addEventListener('DOMContentLoaded',function(){ensureAuth().then(function(){return loadEvents();}).catch(function(e){$('#message').textContent=e.message;$('#message').classList.remove('hidden');});});
