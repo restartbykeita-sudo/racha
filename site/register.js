@@ -51,6 +51,18 @@
   function eventTranslation(){
     return (cfg.translations||[]).find(x=>x.language===language)||null;
   }
+  function renderEventMedia(){
+    const rows=cfg.media||[],gallery=rows.filter(x=>x.media_type==='GALLERY'),sponsors=rows.filter(x=>x.media_type==='SPONSOR'),backgrounds=rows.filter(x=>x.media_type==='BACKGROUND');
+    const section=$('#eventMediaSection');
+    const showGallery=feature('media',true)&&gallery.length,showSponsors=feature('sponsor_logos',true)&&sponsors.length;
+    section.classList.toggle('hidden',!(showGallery||showSponsors));
+    $('#eventGallery').innerHTML=showGallery?gallery.map(x=>'<img class="event-gallery-img" src="'+esc(x.url)+'" alt="'+esc(label(x.alt_text)||cfg.event.name)+'">').join(''):'';
+    $('#sponsorLogos').innerHTML=showSponsors?sponsors.map(x=>'<img class="sponsor-logo" src="'+esc(x.url)+'" alt="'+esc(label(x.alt_text)||'Sponsor')+'">').join(''):'';
+    if(backgrounds.length&&feature('media',true)){
+      document.body.style.backgroundImage='linear-gradient(#100d1dcc,#100d1ddd),url("'+String(backgrounds[0].url).replace(/"/g,'%22')+'")';
+      document.body.style.backgroundSize='cover';document.body.style.backgroundAttachment='fixed';
+    }
+  }
   function renderHero(){
     const tr=eventTranslation();
     $('#heroTitle').textContent=tr?.name||cfg.event.name;
@@ -289,7 +301,7 @@
     $('#payNextLink').textContent=language==='th'?'ชำระงวดถัดไป':language==='en'?'Next installment':language==='zh'?'支付下一期':language==='ja'?'次回分割払い':'Следующий платеж';
   }
   function renderStatic(){
-    translateStatic();renderHero();renderCategories();renderPayment();
+    translateStatic();renderHero();renderEventMedia();renderCategories();renderPayment();
   }
   async function init(){
     try{
