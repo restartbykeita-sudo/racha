@@ -81,21 +81,57 @@
     if(!selectedPackage)return base;
     return selectedPackage.price_mode==='OVERRIDE'?Number(selectedPackage.price_value_thb||0):base+Number(selectedPackage.price_value_thb||0);
   }
-  function renderCategories(){
-    const section=$('#categorySection'), rows=(cfg.categories||[]);
-    section.classList.toggle('hidden',!feature('competition_categories',true)||!rows.length);
-    if(section.classList.contains('hidden')){selectedCategory=null;renderPackages();return;}
-    if(!selectedCategory||!rows.some(x=>x.id===selectedCategory.id))selectedCategory=rows[0];
+  function categoryEligibleFromDom(cat){
+    const blocks=all('.runner-block');if(!blocks.length)return false;
+    return blocks.every(block=>{
+      if(cat.min_age!=null||cat.max_age!=null){
+        const birth=block.querySelector('[name="birth_date"]')?.value||'';if(!birth)return false;
+        const age=ageOnEvent(birth);if(age==='')return false;
+        if(cat.min_age!=null&&Number(age)<Number(cat.min_age))return false;
+        if(cat.max_age!=null&&Number(age)>Number(cat.max_age))return false;
+      }
+      if(cat.gender_rule==='MALE'||cat.gender_rule==='FEMALE'){
+        const raw=(block.querySelector('[name="gender"]')?.value||'').toUpperCase();
+        const gender=['M','MALE','MAN','ชาย','ผู้ชาย'].includes(raw)?'MALE':['F','FEMALE','WOMAN','หญิง','ผู้หญิง'].includes(raw)?'FEMALE':raw;
+        if(gender!==cat.gender_rule)return false;
+      }
+      return true;
+    });
+  }
+  function renderCategoryCards(){
+    const rows=cfg.categories||[],self=feature('self_select_category',true);
     $('#categories').innerHTML=rows.map(c=>{
       const ages=c.min_age==null&&c.max_age==null?'':(c.min_age==null?'≤ '+c.max_age:c.max_age==null?'≥ '+c.min_age:c.min_age+'–'+c.max_age);
-      return '<button type="button" class="choice-card '+(selectedCategory?.id===c.id?'selected':'')+'" data-category="'+c.id+'"><strong>'+esc(label(c.name)||c.code)+'</strong><span class="price">'+money(currentCategoryPrice(c))+'</span><small>'+[c.distance_km!=null?c.distance_km+' KM':'',ages,c.gender_rule==='ANY'?'':c.gender_rule].filter(Boolean).join(' · ')+'</small></button>';
+      return '<button type="button" '+(!self?'disabled':'')+' class="choice-card '+(selectedCategory?.id===c.id?'selected':'')+'" data-category="'+c.id+'"><strong>'+esc(label(c.name)||c.code)+'</strong><span class="price">'+money(currentCategoryPrice(c))+'</span><small>'+[c.distance_km!=null?c.distance_km+' KM':'',ages,c.gender_rule==='ANY'?'':c.gender_rule].filter(Boolean).join(' · ')+'</small></button>';
     }).join('');
+  }
+  function autoPickCategoryFromForm(){
+    if(!feature('auto_category',false))return;
+    const rows=cfg.categories||[],matches=rows.filter(categoryEligibleFromDom);
+    if(!matches.length)return;
+    const next=matches[0];
+    if(selectedCategory?.id===next.id)return;
+    selectedCategory=next;
+    if(selectedPackage?.category_id&&selectedPackage.category_id!==next.id)selectedPackage=null;
+    renderCategoryCards();renderPackages(true);renderPayment();
+  }
+  function renderCategories(){
+    const section=$('#categorySection'),rows=(cfg.categories||[]);
+    section.classList.toggle('hidden',!feature('competition_categories',true)||!rows.length);
+    if(section.classList.contains('hidden')){selectedCategory=null;renderPackages();return;}
+    const auto=feature('auto_category',false),self=feature('self_select_category',true);
+    if(!auto||self){if(!selectedCategory||!rows.some(x=>x.id===selectedCategory.id))selectedCategory=rows[0];}
+    else if(selectedCategory&&!rows.some(x=>x.id===selectedCategory.id))selectedCategory=null;
+    renderCategoryCards();
+    if(auto&&!self&&!selectedCategory){
+      $('#categoryHint').textContent=language==='th'?'กรอกวันเกิด/เพศ ระบบจะเลือกรุ่นให้อัตโนมัติ':t('categoryHint');
+    }
     renderPackages();
   }
   function availablePackages(){
     return (cfg.packages||[]).filter(p=>!p.category_id||p.category_id===selectedCategory?.id);
   }
-  function renderPackages(){
+  function renderPackages(skipRunners=false){
     const rows=availablePackages(), section=$('#packageSection');
     section.classList.toggle('hidden',!feature('packages',true)||!rows.length);
     if(section.classList.contains('hidden')) selectedPackage=null;
@@ -103,7 +139,7 @@
       if(!selectedPackage||!rows.some(x=>x.id===selectedPackage.id))selectedPackage=rows[0];
       $('#packages').innerHTML=rows.map(p=>'<button type="button" class="choice-card '+(selectedPackage?.id===p.id?'selected':'')+'" data-package="'+p.id+'"><strong>'+esc(label(p.name)||p.code)+'</strong><span class="price">'+money(p.price_mode==='OVERRIDE'?p.price_value_thb:currentCategoryPrice(selectedCategory)+Number(p.price_value_thb||0))+'</span><small>ผู้แข่งขัน '+p.runner_count+(p.follower_count?' · ผู้ติดตาม '+p.follower_count:'')+'</small></button>').join('');
     }
-    renderRunners();
+    if(!skipRunners)renderRunners();
     renderPayment();
   }
   function fieldOptions(f){
@@ -132,8 +168,10 @@
   function renderRunners(){
     const count=selectedPackage?Number(selectedPackage.runner_count||1):1, fields=(cfg.fields||[]).filter(f=>f.is_active!==false);
     $('#runners').innerHTML=Array.from({length:count},(_,i)=>'<div class="runner-block" data-runner="'+(i+1)+'"><h3>'+esc(t('runner'))+' '+(i+1)+'</h3><div class="form-grid">'+fields.map(f=>inputHtml(f,i+1)).join('')+'</div></div>').join('');
-    all('input[name="birth_date"]').forEach(input=>input.addEventListener('change',updateAge));
+    all('input[name="birth_date"]').forEach(input=>{input.addEventListener('change',updateAge);input.addEventListener('change',autoPickCategoryFromForm);});
+    all('select[name="gender"], input[name="gender"]').forEach(input=>input.addEventListener('change',autoPickCategoryFromForm));
     renderBeneficiaries();
+    autoPickCategoryFromForm();
   }
   function ageOnEvent(dateStr){
     if(!dateStr)return '';
@@ -264,7 +302,7 @@
   }
 
   $('#language').addEventListener('change',e=>{language=e.target.value;localStorage.setItem('restart_language',language);renderLanguage();renderStatic();});
-  $('#categories').addEventListener('click',e=>{const b=e.target.closest('[data-category]');if(!b)return;selectedCategory=(cfg.categories||[]).find(x=>x.id===b.dataset.category)||null;selectedPackage=null;renderCategories();});
+  $('#categories').addEventListener('click',e=>{const b=e.target.closest('[data-category]');if(!b||!feature('self_select_category',true))return;selectedCategory=(cfg.categories||[]).find(x=>x.id===b.dataset.category)||null;selectedPackage=null;renderCategories();});
   $('#packages').addEventListener('click',e=>{const b=e.target.closest('[data-package]');if(!b)return;selectedPackage=(cfg.packages||[]).find(x=>x.id===b.dataset.package)||null;renderPackages();});
   $('#paymentModes').addEventListener('change',e=>{if(e.target.name==='payment_mode'){paymentMode=e.target.value;renderPayment();}});
   $('#beneficiaryGroups').addEventListener('click',e=>{const add=e.target.closest('.add-bene'),remove=e.target.closest('.remove-bene');if(add){const g=add.closest('.beneficiary-group');g.querySelector('.beneficiary-items').insertAdjacentHTML('beforeend',beneficiaryCard(g.querySelectorAll('.beneficiary-card').length));updateBeneficiaryTotals();}if(remove){const g=remove.closest('.beneficiary-group');if(g.querySelectorAll('.beneficiary-card').length>1){remove.closest('.beneficiary-card').remove();updateBeneficiaryTotals();}}});
