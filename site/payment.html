@@ -16,22 +16,22 @@ body{background:radial-gradient(circle at 80% -12%,color-mix(in srgb,var(--event
 .status-line{display:flex;justify-content:space-between;gap:12px;border:1px solid #493d59;padding:12px;border-radius:11px;margin-bottom:8px}
 </style></head>
 <body>
-<header class="site-header wrap"><a class="brand" href="events.html"><span class="brand-mark">R</span><span>RESTART <small>PAYMENT</small></span></a><a id="backRegister" class="small-button" href="events.html">กลับหน้าสมัคร</a></header>
+<header class="site-header wrap"><a class="brand" href="events.html"><span class="brand-mark">R</span><span>RESTART <small>PAYMENT</small></span></a><div class="inline-actions"><label class="language"><select id="language"><option value="th">ไทย</option><option value="en">English</option><option value="zh">中文</option><option value="ja">日本語</option><option value="ru">Русский</option></select></label><a id="backRegister" class="small-button" href="events.html">กลับหน้าสมัคร</a></div></header>
 <main class="wrap">
-<section class="pay-hero"><span class="eyebrow">NEXT INSTALLMENT</span><h1 id="eventName">ชำระงวดถัดไป</h1><p class="muted">ใช้เลขบัตรประชาชน/Passport พร้อมรหัสสมัคร เพื่อปกป้องข้อมูลของผู้สมัคร</p></section>
+<section class="pay-hero"><span class="eyebrow">NEXT INSTALLMENT</span><h1 id="eventName">ชำระงวดถัดไป</h1><p id="lookupHint" class="muted">ใช้เลขบัตรประชาชน/Passport พร้อมรหัสสมัคร เพื่อปกป้องข้อมูลของผู้สมัคร</p></section>
 <section class="panel lookup-card">
 <form id="lookupForm" class="admin-form" novalidate>
-<label class="field"><span>เลขบัตรประชาชน / Passport</span><input id="idDocument" required autocomplete="off"></label>
-<label class="field"><span>รหัสสมัคร</span><input id="registrationCode" required autocomplete="off" placeholder="RST-..."></label>
-<button class="primary" type="submit">ค้นหาใบสมัคร</button>
+<label class="field"><span id="idLabel">เลขบัตรประชาชน / Passport</span><input id="idDocument" required autocomplete="off"></label>
+<label class="field"><span id="codeLabel">รหัสสมัคร</span><input id="registrationCode" required autocomplete="off" placeholder="RST-..."></label>
+<button id="lookupButton" class="primary" type="submit">ค้นหาใบสมัคร</button>
 </form>
 <div id="result" class="hidden" style="margin-top:24px">
 <hr style="border:0;border-top:1px solid #493d59;margin:0 0 22px">
-<div class="toolbar"><div><span class="eyebrow">PAYMENT STATUS</span><h2 id="personName" style="margin:6px 0"></h2><p id="summary" class="muted"></p></div><div><span class="muted">ยอดสมัคร</span><div id="totalAmount" class="payment-total"></div></div></div>
+<div class="toolbar"><div><span class="eyebrow">PAYMENT STATUS</span><h2 id="personName" style="margin:6px 0"></h2><p id="summary" class="muted"></p></div><div><span id="totalLabel" class="muted">ยอดสมัคร</span><div id="totalAmount" class="payment-total"></div></div></div>
 <div id="scheduleList"></div>
 <div id="nextBlock" class="hidden" style="margin-top:22px">
 <h3 id="nextTitle"></h3><div id="methods" class="stack"></div>
-<form id="payForm" class="stack" style="margin-top:16px"><label class="field"><span>แนบสลิปชำระเงิน</span><input id="slip" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label><button class="primary" type="submit">ส่งสลิปงวดนี้</button></form>
+<form id="payForm" class="stack" style="margin-top:16px"><label class="field"><span id="slipLabel">แนบสลิปชำระเงิน</span><input id="slip" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label><button id="submitPaymentButton" class="primary" type="submit">ส่งสลิปงวดนี้</button></form>
 </div>
 <div id="complete" class="receipt hidden" style="margin-top:18px">ชำระครบทุกงวดแล้ว</div>
 </div>
