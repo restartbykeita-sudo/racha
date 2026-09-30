@@ -7,11 +7,11 @@
   let cfg = null, language = 'th', selectedCategory = null, selectedPackage = null, paymentMode = 'FULL';
 
   const I18N = {
-    th:{open:'เปิดรับสมัคร',closed:'ยังไม่เปิดหรือปิดรับสมัครแล้ว',category:'รุ่นการแข่งขัน',package:'Package',runner:'ผู้สมัคร',insurance:'ผู้รับผลประโยชน์',addBene:'+ เพิ่มผู้รับผลประโยชน์',remove:'ลบ',full:'ชำระเต็ม',installment:'ผ่อนชำระ',due:'ยอดชำระตอนนี้',copy:'คัดลอก',copied:'คัดลอกแล้ว',submit:'ส่งใบสมัคร',success:'สมัครสำเร็จ',code:'รหัสสมัคร',total:'รวม'},
-    en:{open:'Registration open',closed:'Registration is not open',category:'Competition category',package:'Package',runner:'Participant',insurance:'Beneficiary',addBene:'+ Add beneficiary',remove:'Remove',full:'Pay in full',installment:'Installments',due:'Amount due now',copy:'Copy',copied:'Copied',submit:'Submit registration',success:'Registration submitted',code:'Registration code',total:'Total'},
-    zh:{open:'开放报名',closed:'报名尚未开放或已关闭',category:'比赛组别',package:'套餐',runner:'参赛者',insurance:'受益人',addBene:'+ 添加受益人',remove:'删除',full:'全额支付',installment:'分期付款',due:'当前应付',copy:'复制',copied:'已复制',submit:'提交报名',success:'报名成功',code:'报名编号',total:'总计'},
-    ja:{open:'受付中',closed:'受付期間外です',category:'競技カテゴリー',package:'パッケージ',runner:'参加者',insurance:'受取人',addBene:'+ 受取人を追加',remove:'削除',full:'一括払い',installment:'分割払い',due:'今回のお支払い',copy:'コピー',copied:'コピーしました',submit:'申込を送信',success:'申込完了',code:'申込番号',total:'合計'},
-    ru:{open:'Регистрация открыта',closed:'Регистрация закрыта или еще не открыта',category:'Категория',package:'Пакет',runner:'Участник',insurance:'Выгодоприобретатель',addBene:'+ Добавить',remove:'Удалить',full:'Полная оплата',installment:'Рассрочка',due:'К оплате сейчас',copy:'Копировать',copied:'Скопировано',submit:'Отправить заявку',success:'Заявка отправлена',code:'Код регистрации',total:'Итого'}
+    th:{open:'เปิดรับสมัคร',closed:'ยังไม่เปิดหรือปิดรับสมัครแล้ว',category:'รุ่นการแข่งขัน',categoryHint:'เลือกรุ่นที่สมัคร',package:'Package',packageHint:'เลือก Package ที่ต้องการ',participants:'ข้อมูลผู้สมัคร',participantHint:'กรอกข้อมูลให้ตรงกับบัตรประชาชนหรือ Passport',runner:'ผู้สมัคร',insurance:'ข้อมูลประกัน / ผู้รับผลประโยชน์',insuranceHint:'เพิ่มผู้รับผลประโยชน์ได้หลายคน โดยรวมเปอร์เซ็นต์ตามเงื่อนไขของ Event',addBene:'+ เพิ่มผู้รับผลประโยชน์',remove:'ลบ',payment:'การชำระเงิน',paymentHint:'เลือกชำระเต็มหรือผ่อน ตามที่ Event เปิดใช้งาน',full:'ชำระเต็ม',installment:'ผ่อนชำระ',due:'ยอดที่ต้องชำระตอนนี้',copy:'คัดลอก',copied:'คัดลอกแล้ว',submit:'ส่งใบสมัคร',success:'สมัครสำเร็จ',code:'รหัสสมัคร',total:'รวม',beneName:'ชื่อ-นามสกุล',idDoc:'เลขบัตรประชาชน / Passport',address:'ที่อยู่',phone:'เบอร์โทรศัพท์',relation:'ความสัมพันธ์',percent:'เปอร์เซ็นต์ที่ได้รับ',slip:'แนบสลิปชำระเงิน',consent:'ฉันยินยอมให้ใช้ข้อมูลเพื่อการสมัครและจัดการแข่งขันตามเงื่อนไขของ Event',bank:'ธนาคาร'},
+    en:{open:'Registration open',closed:'Registration is not open',category:'Competition category',categoryHint:'Choose your competition category',package:'Package',packageHint:'Choose a package',participants:'Participant information',participantHint:'Enter details exactly as shown on your ID or passport',runner:'Participant',insurance:'Insurance / Beneficiaries',insuranceHint:'Add beneficiaries as needed. The required total follows this event’s settings.',addBene:'+ Add beneficiary',remove:'Remove',payment:'Payment',paymentHint:'Choose full payment or installments if enabled for this event',full:'Pay in full',installment:'Installments',due:'Amount due now',copy:'Copy',copied:'Copied',submit:'Submit registration',success:'Registration submitted',code:'Registration code',total:'Total',beneName:'Full name',idDoc:'ID / Passport',address:'Address',phone:'Phone',relation:'Relationship',percent:'Percentage',slip:'Upload payment slip',consent:'I consent to the use of this information for registration and event operations under the event terms.',bank:'Bank'},
+    zh:{open:'开放报名',closed:'报名尚未开放或已关闭',category:'比赛组别',categoryHint:'请选择比赛组别',package:'套餐',packageHint:'请选择套餐',participants:'参赛者信息',participantHint:'请按身份证或护照填写',runner:'参赛者',insurance:'保险 / 受益人',insuranceHint:'可添加多名受益人，比例总和须符合活动设置',addBene:'+ 添加受益人',remove:'删除',payment:'付款',paymentHint:'根据活动设置选择全额或分期付款',full:'全额支付',installment:'分期付款',due:'当前应付',copy:'复制',copied:'已复制',submit:'提交报名',success:'报名成功',code:'报名编号',total:'总计',beneName:'姓名',idDoc:'身份证 / 护照',address:'地址',phone:'电话',relation:'关系',percent:'受益比例',slip:'上传付款凭证',consent:'我同意根据活动条款使用这些资料进行报名及活动管理。',bank:'银行'},
+    ja:{open:'受付中',closed:'受付期間外です',category:'競技カテゴリー',categoryHint:'競技カテゴリーを選択してください',package:'パッケージ',packageHint:'パッケージを選択してください',participants:'参加者情報',participantHint:'身分証またはパスポートどおりに入力してください',runner:'参加者',insurance:'保険 / 受取人',insuranceHint:'必要に応じて受取人を追加し、割合の合計はイベント設定に従ってください',addBene:'+ 受取人を追加',remove:'削除',payment:'お支払い',paymentHint:'イベント設定に応じて一括または分割払いを選択してください',full:'一括払い',installment:'分割払い',due:'今回のお支払い',copy:'コピー',copied:'コピーしました',submit:'申込を送信',success:'申込完了',code:'申込番号',total:'合計',beneName:'氏名',idDoc:'ID / パスポート',address:'住所',phone:'電話番号',relation:'続柄',percent:'受取割合',slip:'支払証明をアップロード',consent:'イベント規約に基づき、申込および運営のために情報を利用することに同意します。',bank:'銀行'},
+    ru:{open:'Регистрация открыта',closed:'Регистрация закрыта или еще не открыта',category:'Категория',categoryHint:'Выберите категорию соревнования',package:'Пакет',packageHint:'Выберите пакет',participants:'Данные участника',participantHint:'Введите данные точно как в ID или паспорте',runner:'Участник',insurance:'Страхование / Выгодоприобретатели',insuranceHint:'Добавьте нужное число выгодоприобретателей; сумма процентов должна соответствовать настройкам события',addBene:'+ Добавить',remove:'Удалить',payment:'Оплата',paymentHint:'Выберите полную оплату или рассрочку, если она включена',full:'Полная оплата',installment:'Рассрочка',due:'К оплате сейчас',copy:'Копировать',copied:'Скопировано',submit:'Отправить заявку',success:'Заявка отправлена',code:'Код регистрации',total:'Итого',beneName:'ФИО',idDoc:'ID / Паспорт',address:'Адрес',phone:'Телефон',relation:'Степень родства',percent:'Процент',slip:'Загрузить подтверждение оплаты',consent:'Я согласен(на) на использование данных для регистрации и проведения мероприятия согласно условиям события.',bank:'Банк'}
   };
   const t = k => (I18N[language] || I18N.th)[k] || k;
   const esc = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -48,10 +48,14 @@
     const now=Date.now(),o=cfg.event.registration_opens_at?new Date(cfg.event.registration_opens_at).getTime():null,c=cfg.event.registration_closes_at?new Date(cfg.event.registration_closes_at).getTime():null;
     return (!o||now>=o)&&(!c||now<=c);
   }
+  function eventTranslation(){
+    return (cfg.translations||[]).find(x=>x.language===language)||null;
+  }
   function renderHero(){
-    $('#heroTitle').textContent=cfg.event.name;
+    const tr=eventTranslation();
+    $('#heroTitle').textContent=tr?.name||cfg.event.name;
     $('#heroStatus').textContent=isOpen()?t('open'):t('closed');
-    $('#heroMeta').textContent=[cfg.event.event_date_start,cfg.event.event_date_end,cfg.event.location_name].filter(Boolean).join(' · ');
+    $('#heroMeta').textContent=[cfg.event.event_date_start,cfg.event.event_date_end,tr?.location_name||cfg.event.location_name].filter(Boolean).join(' · ');
     if(cfg.event.banner_url){$('#heroBanner').src=cfg.event.banner_url;$('#heroBanner').classList.remove('hidden');}
     if(cfg.event.logo_url){$('#heroLogo').src=cfg.event.logo_url;$('#heroLogo').classList.remove('hidden');}
     $('#closedBox').classList.toggle('hidden',isOpen());
@@ -141,12 +145,12 @@
   }
   function beneficiaryCard(index=0){
     return '<div class="beneficiary-card"><div class="form-grid">'+
-      '<label class="field"><span>ชื่อ-นามสกุล</span><input name="bene_full_name" required></label>'+
-      '<label class="field"><span>เลขบัตรประชาชน / Passport</span><input name="bene_id" required></label>'+
-      '<label class="field span-all"><span>ที่อยู่</span><textarea name="bene_address"></textarea></label>'+
-      '<label class="field"><span>เบอร์โทรศัพท์</span><input name="bene_phone" type="tel"></label>'+
-      '<label class="field"><span>ความสัมพันธ์</span><input name="bene_relation" required></label>'+
-      '<label class="field"><span>เปอร์เซ็นต์ที่ได้รับ</span><input name="bene_percent" type="number" min="0.01" max="100" step="0.01" value="'+(index===0?'100':'')+'" required></label>'+
+      '<label class="field"><span>'+esc(t('beneName'))+'</span><input name="bene_full_name" required></label>'+
+      '<label class="field"><span>'+esc(t('idDoc'))+'</span><input name="bene_id" required></label>'+
+      '<label class="field span-all"><span>'+esc(t('address'))+'</span><textarea name="bene_address"></textarea></label>'+
+      '<label class="field"><span>'+esc(t('phone'))+'</span><input name="bene_phone" type="tel"></label>'+
+      '<label class="field"><span>'+esc(t('relation'))+'</span><input name="bene_relation" required></label>'+
+      '<label class="field"><span>'+esc(t('percent'))+'</span><input name="bene_percent" type="number" min="0.01" max="100" step="0.01" value="'+(index===0?'100':'')+'" required></label>'+
       '</div><div class="beneficiary-actions"><span class="subtle"></span><button type="button" class="small-button danger remove-bene">'+esc(t('remove'))+'</button></div></div>';
   }
   function renderBeneficiaries(){
@@ -211,7 +215,7 @@
   function renderPaymentMethods(amount){
     const box=$('#paymentMethods'),methods=(cfg.payment_methods||[]);
     box.innerHTML=methods.map((m,i)=>{
-      if(m.kind==='BANK')return '<div class="pay-card"><small>ธนาคาร</small><h3>'+esc(m.bank_name||'')+'</h3><p>'+esc(m.account_name||'')+'</p><div class="copy-line"><code>'+esc(m.account_number||'')+'</code><button type="button" class="copy-button" data-copy="'+esc(m.account_number||'')+'">'+esc(t('copy'))+'</button></div></div>';
+      if(m.kind==='BANK')return '<div class="pay-card"><small>'+esc(t('bank'))+'</small><h3>'+esc(m.bank_name||'')+'</h3><p>'+esc(m.account_name||'')+'</p><div class="copy-line"><code>'+esc(m.account_number||'')+'</code><button type="button" class="copy-button" data-copy="'+esc(m.account_number||'')+'">'+esc(t('copy'))+'</button></div></div>';
       return '<div class="pay-card"><small>PromptPay</small><h3>'+esc(m.label||'PromptPay')+'</h3><div class="copy-line"><code>'+esc(m.promptpay_id||'')+'</code><button type="button" class="copy-button" data-copy="'+esc(m.promptpay_id||'')+'">'+esc(t('copy'))+'</button></div>'+(m.qr_enabled?'<div class="qr-target" data-qr="'+i+'"></div>':'')+'</div>';
     }).join('');
     methods.forEach((m,i)=>{if(m.kind==='PROMPTPAY'&&m.qr_enabled&&m.promptpay_id&&window.QRCode){const target=box.querySelector('[data-qr="'+i+'"]');if(target){const wrap=document.createElement('div');wrap.id='qrCode';target.appendChild(wrap);new QRCode(wrap,{text:promptPayPayload(m.promptpay_id,m.promptpay_type||'PHONE',amount),width:180,height:180,correctLevel:QRCode.CorrectLevel.M});}}});
@@ -241,8 +245,13 @@
     }catch(err){alerts.close();alerts.notice('error','ส่งใบสมัครไม่สำเร็จ',err.message||String(err));}
   }
 
+  function translateStatic(){
+    const map={categoryTitle:'category',categoryHint:'categoryHint',packageTitle:'package',packageHint:'packageHint',participantTitle:'participants',participantHint:'participantHint',insuranceTitle:'insurance',insuranceHint:'insuranceHint',paymentTitle:'payment',paymentHint:'paymentHint',dueLabel:'due',slipLabel:'slip',consentLabel:'consent'};
+    Object.keys(map).forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t(map[id]);});
+    $('#payNextLink').textContent=language==='th'?'ชำระงวดถัดไป':language==='en'?'Next installment':language==='zh'?'支付下一期':language==='ja'?'次回分割払い':'Следующий платеж';
+  }
   function renderStatic(){
-    renderHero();renderCategories();renderPayment();
+    translateStatic();renderHero();renderCategories();renderPayment();
   }
   async function init(){
     try{
