@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#100d1d">
+  <title>Event Builder · RESTART</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js"></script>
+  <script defer src="alerts.js"></script>
+  <script defer src="config.js"></script>
+  <style>
+    .builder-shell{display:grid;grid-template-columns:280px minmax(0,1fr);gap:18px;align-items:start}
+    .event-list{display:grid;gap:8px;position:sticky;top:16px}
+    .event-item{width:100%;text-align:left;border:1px solid #51435b;background:#282238;color:#fff;border-radius:12px;padding:12px}
+    .event-item.active{border-color:#ff92aa;background:#362844}.event-item small{display:block;color:#bdb5ca;margin-top:4px}
+    .builder-tabs{display:flex;gap:8px;overflow:auto;padding-bottom:4px;margin-bottom:18px}
+    .builder-tabs button{white-space:nowrap;border:1px solid #51435b;background:#282238;color:#fff;padding:10px 12px;border-radius:10px}
+    .builder-tabs button.active{border-color:#ff92aa;background:#3a2947}
+    .feature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+    .feature-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #493d59;background:#242033;border-radius:12px;padding:12px}
+    .feature-toggle input{width:20px;height:20px;accent-color:#ef7099}
+    .builder-card{border:1px solid #493d59;background:#242033;border-radius:14px;padding:15px}
+    .builder-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .builder-card h3{margin:0 0 5px}.builder-card p{margin:0;color:#bdb5ca;font-size:12px}
+    .record-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+    .toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+    .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#777;margin-right:6px}
+    .status-dot.OPEN,.status-dot.PUBLISHED{background:#71d39d}.status-dot.DRAFT{background:#edb66f}.status-dot.CLOSED{background:#ef7f8c}
+    .color-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.color-row input[type=color]{height:46px;padding:4px}
+    .media-preview{max-width:260px;max-height:130px;object-fit:contain;border-radius:12px;border:1px solid #493d59;background:#151325;padding:6px}
+    .empty{border:1px dashed #51435b;border-radius:14px;padding:22px;text-align:center;color:#bdb5ca}
+    .subtle{font-size:12px;color:#9e93aa}.mini-danger{border-color:#75414c!important;color:#ffb2ba!important}
+    @media(max-width:900px){.builder-shell{grid-template-columns:1fr}.event-list{position:static}.feature-grid{grid-template-columns:1fr}}
+    @media(max-width:650px){.record-grid,.color-row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header class="site-header wrap">
+  <a class="brand" href="admin.html"><span class="brand-mark">R</span><span>RESTART <small>EVENT BUILDER</small></span></a>
+  <div class="inline-actions"><a class="small-button" href="admin.html">หลังบ้านเดิม</a><a class="small-button" href="./">หน้าสมัคร RACHA</a><button id="logout" class="small-button" type="button">ออกจากระบบ</button></div>
+</header>
+<main class="wrap">
+  <div class="toolbar">
+    <div><span class="eyebrow">RESTART REGISTRATION PLATFORM</span><h1 style="margin:8px 0 0">จัดการ Event</h1><p class="muted">สร้างงานใหม่ได้ไม่จำกัด และควบคุมฟังก์ชันของแต่ละงานแยกกัน</p></div>
+    <button id="newEvent" class="primary" type="button">+ สร้าง Event ใหม่</button>
+  </div>
+  <div id="message" class="alert hidden"></div>
+  <div id="builder" class="builder-shell hidden">
+    <aside class="event-list panel">
+      <div class="toolbar"><strong>Event ทั้งหมด</strong><span id="eventCount" class="subtle"></span></div>
+      <div id="eventList" class="stack"></div>
+    </aside>
+    <section>
+      <div class="panel">
+        <div class="toolbar">
+          <div><h2 id="eventTitle" style="margin:0"></h2><p id="eventMeta" class="muted"></p></div>
+          <div class="inline-actions"><button id="refresh" class="small-button" type="button">รีเฟรช</button><button id="duplicateEvent" class="small-button" type="button">คัดลอก Event</button></div>
+        </div>
+        <nav class="builder-tabs" id="tabs">
+          <button data-tab="general" class="active">ข้อมูล Event</button>
+          <button data-tab="features">เปิด–ปิดฟังก์ชัน</button>
+          <button data-tab="fields">แบบฟอร์ม</button>
+          <button data-tab="categories">รุ่นการแข่งขัน</button>
+          <button data-tab="packages">แพ็กเกจ</button>
+          <button data-tab="payments">การชำระเงิน</button>
+          <button data-tab="theme">Theme / ภาพ</button>
+        </nav>
+        <div id="generalTab" class="tab-page">
+          <form id="generalForm" class="admin-form">
+            <label class="field"><span>ชื่อ Event</span><input name="name" required></label>
+            <label class="field"><span>Slug URL</span><input name="slug" pattern="[a-z0-9][a-z0-9-]{1,80}" required></label>
+            <label class="field"><span>รหัส Event</span><input name="event_code"></label>
+            <label class="field"><span>สถานะ</span><select name="status"><option>DRAFT</option><option>PUBLISHED</option><option>OPEN</option><option>CLOSED</option><option>ARCHIVED</option></select></label>
+            <label class="field"><span>วันเริ่ม Event</span><input name="event_date_start" type="date"></label>
+            <label class="field"><span>วันจบ Event</span><input name="event_date_end" type="date"></label>
+            <label class="field"><span>เปิดรับสมัคร</span><input name="registration_opens_at" type="datetime-local"></label>
+            <label class="field"><span>ปิดรับสมัคร</span><input name="registration_closes_at" type="datetime-local"></label>
+            <label class="field"><span>สถานที่</span><input name="location_name"></label>
+            <label class="field"><span>จำนวนรับสูงสุด</span><input name="capacity" type="number" min="1"></label>
+            <label class="field span-all"><span>รายละเอียด</span><textarea name="description" rows="4"></textarea></label>
+            <div class="span-all"><strong>ภาษาที่เปิดใช้</strong><div id="languages" class="choice-row" style="margin-top:10px"></div></div>
+            <button class="primary" type="submit">บันทึกข้อมูล Event</button>
+          </form>
+        </div>
+        <div id="featuresTab" class="tab-page hidden">
+          <div class="toolbar"><div><h2 style="margin:0">เปิด–ปิดฟังก์ชัน</h2><p class="muted">การตั้งค่านี้แยกกันในแต่ละ Event</p></div><div class="inline-actions"><button id="enableAll" class="small-button" type="button">เปิดทั้งหมด</button><button id="disableAll" class="small-button" type="button">ปิดทั้งหมด</button></div></div>
+          <div id="featureGrid" class="feature-grid"></div>
+          <button id="saveFeatures" class="primary" type="button" style="margin-top:16px">บันทึกฟังก์ชัน</button>
+        </div>
+        <div id="fieldsTab" class="tab-page hidden">
+          <div class="toolbar"><div><h2 style="margin:0">Form Builder</h2><p class="muted">Field พื้นฐานเปิด/ปิดได้ และเพิ่ม Field ใหม่ได้ไม่จำกัด</p></div><button id="addField" class="primary" type="button">+ เพิ่ม Field</button></div>
+          <div id="fieldList" class="stack"></div>
+        </div>
+        <div id="categoriesTab" class="tab-page hidden">
+          <div class="toolbar"><div><h2 style="margin:0">รุ่นการแข่งขัน</h2><p class="muted">แต่ละรุ่นกำหนดระยะ อายุ เพศ ราคา และการผ่อนแยกกันได้</p></div><button id="addCategory" class="primary" type="button">+ เพิ่มรุ่น</button></div>
+          <div id="categoryList" class="stack"></div>
+        </div>
+        <div id="packagesTab" class="tab-page hidden">
+          <div class="toolbar"><div><h2 style="margin:0">Package Builder</h2><p class="muted">ราคา Package เลือกบวกเพิ่มจากรุ่น หรือแทนราคาของรุ่นได้</p></div><button id="addPackage" class="primary" type="button">+ เพิ่ม Package</button></div>
+          <div id="packageList" class="stack"></div>
+        </div>
+        <div id="paymentsTab" class="tab-page hidden">
+          <div class="toolbar"><div><h2 style="margin:0">การชำระเงิน</h2><p class="muted">บัญชีธนาคาร PromptPay และแผนผ่อนของ Event</p></div></div>
+          <div class="stack">
+            <form id="bankForm" class="builder-card admin-form">
+              <h3 class="span-all">บัญชีธนาคาร</h3>
+              <label class="field"><span>ธนาคาร</span><input name="bank_name"></label>
+              <label class="field"><span>ชื่อบัญชี</span><input name="account_name"></label>
+              <label class="field"><span>เลขบัญชี</span><input name="account_number"></label>
+              <label class="checkbox-row"><input name="is_enabled" type="checkbox"> เปิดใช้งาน</label>
+              <button class="primary" type="submit">บันทึกบัญชี</button>
+            </form>
+            <form id="promptpayForm" class="builder-card admin-form">
+              <h3 class="span-all">PromptPay</h3>
+              <label class="field"><span>ประเภท</span><select name="promptpay_type"><option value="PHONE">เบอร์โทร</option><option value="NATIONAL_ID">เลขบัตรประชาชน</option><option value="EWALLET">E-Wallet</option></select></label>
+              <label class="field"><span>หมายเลข PromptPay</span><input name="promptpay_id"></label>
+              <label class="checkbox-row"><input name="qr_enabled" type="checkbox"> สร้าง QR Code</label>
+              <label class="checkbox-row"><input name="is_enabled" type="checkbox"> เปิดใช้งาน</label>
+              <button class="primary" type="submit">บันทึก PromptPay</button>
+            </form>
+            <div class="builder-card">
+              <div class="toolbar"><div><h3 style="margin:0">แผนผ่อน</h3><p class="muted">กำหนดจำนวนงวดและยอดงวดแรกได้ ตอนคำนวณจริงยอดทุกงวดต้องรวมเท่ากับยอดสมัคร</p></div><button id="saveInstallment" class="small-button" type="button">บันทึกแผนผ่อน</button></div>
+              <div class="record-grid">
+                <label class="field"><span>จำนวนงวด</span><input id="installmentCount" type="number" min="2" max="12" value="3"></label>
+                <label class="field"><span>งวดแรก (บาท)</span><input id="firstPayment" type="number" min="0" value="3000"></label>
+              </div>
+              <div id="installmentSteps" class="stack" style="margin-top:14px"></div>
+            </div>
+          </div>
+        </div>
+        <div id="themeTab" class="tab-page hidden">
+          <form id="themeForm" class="stack">
+            <div class="builder-card"><h3>สีและรูปแบบ</h3><div id="themeColors" class="color-row"></div></div>
+            <div class="builder-card"><h3>Logo และ Banner</h3>
+              <div class="record-grid">
+                <label class="field"><span>Logo</span><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"><img id="logoPreview" class="media-preview hidden" alt="Logo"></label>
+                <label class="field"><span>Banner</span><input id="bannerFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"><img id="bannerPreview" class="media-preview hidden" alt="Banner"></label>
+              </div>
+            </div>
+            <button class="primary" type="submit">บันทึก Theme / ภาพ</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+<script>
+(function(){
+'use strict';
+var cfg=window.RRIH_CONFIG, alerts=window.RRIHAlerts, client=null, events=[], current=null, related={};
+var $=function(s){return document.querySelector(s);};
+var esc=function(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
+var bkkInput=function(v){if(!v)return ''; return new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(v)).replace(' ','T');};
+var iso=function(v){return v?new Date(v+':00+07:00').toISOString():null;};
+var slugify=function(v){return String(v||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,80);};
+var FEATURES={
+ basic_info:'ข้อมูลพื้นฐาน',insurance:'ข้อมูลประกัน',beneficiaries_multiple:'ผู้รับผลประโยชน์หลายคน',beneficiary_total_100:'บังคับเปอร์เซ็นต์รวม 100%',
+ competition_categories:'รุ่นการแข่งขัน',auto_category:'คำนวณรุ่นอัตโนมัติ',self_select_category:'ให้ผู้สมัครเลือกรุ่น',category_pricing:'ราคาแยกตามรุ่น',
+ distances:'ระยะการแข่งขัน',packages:'Package',followers:'ผู้ติดตาม',shirts:'ไซส์เสื้อ',early_bird:'Early Bird',promotions:'Promotion',discount_codes:'Discount Code',
+ full_payment:'จ่ายเต็ม',installments:'ผ่อนชำระ',bank_transfer:'บัญชีธนาคาร',promptpay:'PromptPay',payment_qr:'QR ชำระเงิน',slip_upload:'อัปโหลดสลิป',
+ admin_slip_review:'Admin ตรวจสลิป',pdpa:'PDPA / Consent',multilingual:'หลายภาษา',logo:'Logo',sponsor_logos:'Sponsor Logo',banner:'Banner',media:'ภาพประกอบ',
+ capacity:'จำกัดจำนวนรับ',waitlist:'Waitlist',team_registration:'สมัครเป็นทีม',pair_registration:'สมัครแบบคู่',edit_after_submit:'แก้ข้อมูลหลังสมัคร',
+ cancellation:'ยกเลิกใบสมัคร',transfer_registration:'โอนสิทธิ์',export:'Export',notifications:'ระบบแจ้งเตือน'
+};
+var LANGS={th:'ไทย',en:'English',zh:'中文',ja:'日本語',ru:'Русский'};
+var THEME_KEYS={primary:'สีหลัก',secondary:'สีรอง',background:'พื้นหลัง',surface:'พื้น Card',text:'ตัวอักษร',muted:'ข้อความรอง',accent:'Accent'};
+
+function notice(msg,icon){if(msg)alerts.notice(icon||'error',icon==='success'?'สำเร็จ':'แจ้งเตือน',msg);}
+async function ensureAuth(){
+ if(!window.supabase)throw new Error('โหลด Supabase ไม่สำเร็จ');
+ client=window.supabase.createClient(cfg.SUPABASE_URL,cfg.PUBLISHABLE_KEY);
+ var session=(await client.auth.getSession()).data.session;
+ if(!session){location.href='admin.html';throw new Error('กรุณาเข้าสู่ระบบ');}
+ var test=await client.from('restart_events').select('id').limit(1);
+ if(test.error)throw new Error('บัญชีนี้ยังไม่มีสิทธิ์จัดการ Event');
+}
+async function loadEvents(selectId){
+ var q=await client.from('restart_events').select('*').order('created_at',{ascending:false});
+ if(q.error)throw q.error; events=q.data||[];
+ if(!events.length){$('#builder').classList.add('hidden');return;}
+ $('#builder').classList.remove('hidden'); renderEventList();
+ var target=events.find(function(e){return e.id===selectId;})||events.find(function(e){return current&&e.id===current.id;})||events[0];
+ await selectEvent(target.id);
+}
+function renderEventList(){
+ $('#eventCount').textContent=events.length+' งาน';
+ $('#eventList').innerHTML=events.map(function(e){
+  return '<button class="event-item '+(current&&current.id===e.id?'active':'')+'" data-event="'+esc(e.id)+'"><strong><span class="status-dot '+esc(e.status)+'"></span>'+esc(e.name)+'</strong><small>'+esc(e.event_code||e.slug)+' · '+esc(e.status)+'</small></button>';
+ }).join('');
+}
+async function selectEvent(id){
+ current=events.find(function(e){return e.id===id;}); if(!current)return;
+ renderEventList(); $('#eventTitle').textContent=current.name; $('#eventMeta').textContent=(current.event_code||current.slug)+' · '+current.status;
+ var data=await Promise.all([
+  client.from('restart_form_sections').select('*').eq('event_id',id).order('sort_order'),
+  client.from('restart_form_fields').select('*').eq('event_id',id).order('sort_order'),
+  client.from('restart_race_categories').select('*').eq('event_id',id).order('sort_order'),
+  client.from('restart_packages').select('*').eq('event_id',id).order('sort_order'),
+  client.from('restart_payment_methods').select('*').eq('event_id',id).order('sort_order'),
+  client.from('restart_installment_plans').select('*').eq('event_id',id).order('priority',{ascending:false})
+ ]);
+ data.forEach(function(x){if(x.error)throw x.error;});
+ related={sections:data[0].data||[],fields:data[1].data||[],categories:data[2].data||[],packages:data[3].data||[],payments:data[4].data||[],plans:data[5].data||[]};
+ await loadSteps();
+ renderAll();
+}
+async function loadSteps(){
+ related.steps=[];
+ if(!related.plans.length)return;
+ var q=await client.from('restart_installment_steps').select('*').eq('plan_id',related.plans[0].id).order('installment_no');
+ if(q.error)throw q.error; related.steps=q.data||[];
+}
+function renderAll(){renderGeneral();renderFeatures();renderFields();renderCategories();renderPackages();renderPayments();renderTheme();}
+function renderGeneral(){
+ var f=$('#generalForm'), names=['name','slug','event_code','status','event_date_start','event_date_end','location_name','capacity','description'];
+ names.forEach(function(n){f.elements[n].value=current[n]==null?'':current[n];});
+ f.elements.registration_opens_at.value=bkkInput(current.registration_opens_at); f.elements.registration_closes_at.value=bkkInput(current.registration_closes_at);
+ var enabled=new Set(current.languages||['th']);
+ $('#languages').innerHTML=Object.keys(LANGS).map(function(k){return '<label><input type="checkbox" value="'+k+'" '+(enabled.has(k)?'checked':'')+'><span>'+LANGS[k]+'</span></label>';}).join('');
+}
+function renderFeatures(){
+ var flags=current.feature_flags||{};
+ $('#featureGrid').innerHTML=Object.keys(FEATURES).map(function(k){return '<label class="feature-toggle"><span>'+esc(FEATURES[k])+'</span><input type="checkbox" data-feature="'+k+'" '+(flags[k]?'checked':'')+'></label>';}).join('');
+}
+function labelObj(x){return x&&typeof x==='object'?x:{};}
+function renderFields(){
+ var sectionMap={}; related.sections.forEach(function(s){sectionMap[s.id]=(labelObj(s.label).th||s.section_key);});
+ $('#fieldList').innerHTML=related.fields.length?related.fields.map(function(f){
+  return '<div class="builder-card"><div class="builder-card-head"><div><h3>'+esc(labelObj(f.label).th||f.field_key)+'</h3><p>'+esc(f.field_key)+' · '+esc(f.field_type)+' · '+esc(sectionMap[f.section_id]||'ไม่ระบุหมวด')+'</p></div><div class="inline-actions">'+
+   '<label class="checkbox-row"><input type="checkbox" data-field-active="'+f.id+'" '+(f.is_active?'checked':'')+'> เปิด</label>'+
+   '<label class="checkbox-row"><input type="checkbox" data-field-required="'+f.id+'" '+(f.is_required?'checked':'')+'> บังคับ</label>'+
+   (!f.is_system?'<button class="small-button mini-danger" data-delete-field="'+f.id+'" type="button">ลบ</button>':'')+
+  '</div></div></div>';
+ }).join(''):'<div class="empty">ยังไม่มี Field</div>';
+}
+function renderCategories(){
+ $('#categoryList').innerHTML=related.categories.length?related.categories.map(function(c){
+  var n=labelObj(c.name).th||c.code, ages=(c.min_age==null&&c.max_age==null)?'ไม่จำกัดอายุ':(c.min_age==null?'≤ '+c.max_age:(c.max_age==null?'≥ '+c.min_age:c.min_age+'–'+c.max_age));
+  return '<div class="builder-card"><div class="builder-card-head"><div><h3>'+esc(n)+'</h3><p>'+esc(c.code)+' · '+esc(c.distance_km==null?'ไม่ระบุระยะ':c.distance_km+' KM')+' · '+esc(ages)+' · '+esc(c.gender_rule)+'</p></div><div class="inline-actions"><button class="small-button" data-edit-category="'+c.id+'" type="button">แก้ไข</button><button class="small-button mini-danger" data-delete-category="'+c.id+'" type="button">ลบ</button></div></div><div class="record-grid"><div><span class="subtle">ราคาปกติ</span><strong style="display:block;font-size:22px;color:#ffb09b">'+Number(c.base_price_thb||0).toLocaleString('th-TH')+' ฿</strong></div><div><span class="subtle">Early Bird</span><strong style="display:block">'+(c.early_bird_price_thb==null?'—':Number(c.early_bird_price_thb).toLocaleString('th-TH')+' ฿')+'</strong></div></div></div>';
+ }).join(''):'<div class="empty">ยังไม่มีรุ่นการแข่งขัน กด “เพิ่มรุ่น” เพื่อสร้างรุ่นแรก</div>';
+}
+function renderPackages(){
+ var cat={};related.categories.forEach(function(c){cat[c.id]=labelObj(c.name).th||c.code;});
+ $('#packageList').innerHTML=related.packages.length?related.packages.map(function(p){
+  return '<div class="builder-card"><div class="builder-card-head"><div><h3>'+esc(labelObj(p.name).th||p.code)+'</h3><p>'+esc(p.code)+' · '+esc(p.category_id?cat[p.category_id]||'เฉพาะรุ่น':'ใช้ได้ทุกรุ่น')+'</p></div><div class="inline-actions"><button class="small-button" data-edit-package="'+p.id+'" type="button">แก้ไข</button><button class="small-button mini-danger" data-delete-package="'+p.id+'" type="button">ลบ</button></div></div><p style="margin-top:10px">'+esc(p.price_mode==='ADD'?'บวกเพิ่ม':'ราคาแทนที่')+' '+Number(p.price_value_thb||0).toLocaleString('th-TH')+' ฿ · ผู้แข่งขัน '+p.runner_count+' · ผู้ติดตาม '+p.follower_count+'</p></div>';
+ }).join(''):'<div class="empty">ยังไม่มี Package</div>';
+}
+function renderPayments(){
+ var bank=related.payments.find(function(x){return x.kind==='BANK';})||{}, pp=related.payments.find(function(x){return x.kind==='PROMPTPAY';})||{};
+ var bf=$('#bankForm'), pf=$('#promptpayForm');
+ ['bank_name','account_name','account_number'].forEach(function(n){bf.elements[n].value=bank[n]||'';});bf.elements.is_enabled.checked=!!bank.is_enabled;
+ pf.elements.promptpay_type.value=pp.promptpay_type||'PHONE';pf.elements.promptpay_id.value=pp.promptpay_id||'';pf.elements.qr_enabled.checked=pp.qr_enabled!==false;pf.elements.is_enabled.checked=!!pp.is_enabled;
+ var plan=related.plans[0]||{};$('#installmentCount').value=plan.installment_count||3;$('#firstPayment').value=plan.first_payment_thb==null?3000:plan.first_payment_thb;
+ renderInstallmentSteps();
+}
+function renderInstallmentSteps(){
+ var count=Math.max(2,Math.min(12,Number($('#installmentCount').value)||3)), by={};(related.steps||[]).forEach(function(s){by[s.installment_no]=s;});
+ $('#installmentSteps').innerHTML=Array.from({length:count},function(_,i){var no=i+1,s=by[no]||{};return '<div class="builder-card"><strong>งวด '+no+'</strong><div class="record-grid"><label class="field"><span>วิธีคำนวณ</span><select data-step-mode="'+no+'"><option value="FIXED" '+(s.amount_mode==='FIXED'?'selected':'')+'>ยอดคงที่</option><option value="AUTO" '+(!s.amount_mode||s.amount_mode==='AUTO'?'selected':'')+'>แบ่งอัตโนมัติ</option><option value="PERCENT" '+(s.amount_mode==='PERCENT'?'selected':'')+'>เปอร์เซ็นต์</option><option value="REMAINDER" '+(s.amount_mode==='REMAINDER'?'selected':'')+'>ยอดที่เหลือ</option></select></label><label class="field"><span>จำนวน / %</span><input data-step-amount="'+no+'" type="number" min="0" step="0.01" value="'+esc(s.amount_value==null?'':s.amount_value)+'"></label><label class="field"><span>วันครบกำหนด</span><input data-step-due="'+no+'" type="datetime-local" value="'+esc(bkkInput(s.due_at))+'"></label></div></div>';}).join('');
+}
+function renderTheme(){
+ var th=current.theme||{};
+ $('#themeColors').innerHTML=Object.keys(THEME_KEYS).map(function(k){return '<label class="field"><span>'+esc(THEME_KEYS[k])+'</span><input name="'+k+'" type="color" value="'+esc(th[k]||'#000000')+'"></label>';}).join('');
+ [['logoPreview',current.logo_url],['bannerPreview',current.banner_url]].forEach(function(x){var el=$('#'+x[0]); if(x[1]){el.src=x[1];el.classList.remove('hidden');}else el.classList.add('hidden');});
+}
+
+async function createEvent(){
+ var res=await alerts.fire({title:'สร้าง Event ใหม่',html:'<input id="swName" class="swal2-input" placeholder="ชื่อ Event"><input id="swSlug" class="swal2-input" placeholder="slug เช่น restart-phuket-2027"><input id="swStart" type="date" class="swal2-input">',showCancelButton:true,confirmButtonText:'สร้าง Event',cancelButtonText:'ยกเลิก',preConfirm:function(){var name=document.getElementById('swName').value.trim(),slug=slugify(document.getElementById('swSlug').value||name),date=document.getElementById('swStart').value;if(!name||!slug){window.Swal.showValidationMessage('กรุณาระบุชื่อ Event');return false;}return {name:name,slug:slug,event_date_start:date||null};}});
+ if(!res.isConfirmed)return;
+ alerts.loading('กำลังสร้าง Event…');
+ var ins=await client.from('restart_events').insert({name:res.value.name,slug:res.value.slug,event_date_start:res.value.event_date_start,created_by:(await client.auth.getUser()).data.user.id}).select().single();
+ if(ins.error){alerts.close();throw ins.error;}
+ var ev=ins.data;
+ var sections=await client.from('restart_form_sections').insert([
+  {event_id:ev.id,section_key:'basic',label:{th:'ข้อมูลผู้สมัคร',en:'Participant information'},sort_order:10},
+  {event_id:ev.id,section_key:'emergency',label:{th:'ข้อมูลฉุกเฉิน',en:'Emergency contact'},sort_order:20},
+  {event_id:ev.id,section_key:'insurance',label:{th:'ข้อมูลประกัน',en:'Insurance beneficiaries'},sort_order:30}
+ ]).select();
+ if(sections.error)throw sections.error;
+ var basic=sections.data.find(function(x){return x.section_key==='basic';}),emergency=sections.data.find(function(x){return x.section_key==='emergency';});
+ var defs=[
+  ['prefix','select','คำนำหน้า',true,basic.id],['first_name','text','ชื่อ',true,basic.id],['last_name','text','นามสกุล',true,basic.id],
+  ['address','address','ที่อยู่',true,basic.id],['birth_date','date','วันเกิด',true,basic.id],['age','number','อายุ',false,basic.id],
+  ['id_document','id_document','เลขบัตรประชาชน / Passport',true,basic.id],['phone','tel','เบอร์โทรศัพท์',true,basic.id],['blood_group','select','กรุ๊ปเลือด',true,basic.id],
+  ['shirt_size','select','ขนาดไซส์เสื้อ',true,basic.id],['emergency_phone','tel','เบอร์โทรฉุกเฉิน',true,emergency.id],['emergency_relation','text','ความสัมพันธ์',true,emergency.id]
+ ];
+ var rows=defs.map(function(d,i){return {event_id:ev.id,section_id:d[4],field_key:d[0],field_type:d[1],label:{th:d[2]},is_required:d[3],is_system:true,sort_order:(i+1)*10};});
+ var fi=await client.from('restart_form_fields').insert(rows);if(fi.error)throw fi.error;
+ alerts.close();alerts.toast('success','สร้าง Event แล้ว');await loadEvents(ev.id);
+}
+async function duplicateEvent(){
+ if(!current)return; var res=await alerts.fire({icon:'question',title:'คัดลอก Event?',text:'จะคัดลอกการตั้งค่า Form รุ่น Package Payment และ Theme จาก Event นี้',showCancelButton:true,confirmButtonText:'คัดลอก',cancelButtonText:'ยกเลิก'});if(!res.isConfirmed)return;
+ alerts.loading('กำลังคัดลอก Event…');
+ var copy=Object.assign({},current);delete copy.id;delete copy.created_at;delete copy.updated_at;copy.name=current.name+' COPY';copy.slug=(current.slug+'-copy-'+Date.now().toString().slice(-6)).slice(0,80);copy.status='DRAFT';copy.created_by=(await client.auth.getUser()).data.user.id;
+ var n=await client.from('restart_events').insert(copy).select().single();if(n.error)throw n.error;var id=n.data.id;
+ var secMap={};
+ for(var i=0;i<related.sections.length;i++){var s=related.sections[i],si=await client.from('restart_form_sections').insert({event_id:id,section_key:s.section_key,label:s.label,description:s.description,sort_order:s.sort_order,is_active:s.is_active}).select().single();if(si.error)throw si.error;secMap[s.id]=si.data.id;}
+ for(var j=0;j<related.fields.length;j++){var f=related.fields[j];await client.from('restart_form_fields').insert({event_id:id,section_id:secMap[f.section_id]||null,field_key:f.field_key,field_type:f.field_type,label:f.label,placeholder:f.placeholder,options:f.options,validation:f.validation,is_required:f.is_required,is_active:f.is_active,is_system:f.is_system,sort_order:f.sort_order});}
+ for(var c=0;c<related.categories.length;c++){var rc=related.categories[c],obj=Object.assign({},rc);delete obj.id;obj.event_id=id;await client.from('restart_race_categories').insert(obj);}
+ for(var p=0;p<related.packages.length;p++){var rp=related.packages[p],po=Object.assign({},rp);delete po.id;po.event_id=id;po.category_id=null;await client.from('restart_packages').insert(po);}
+ for(var m=0;m<related.payments.length;m++){var pm=related.payments[m],mo=Object.assign({},pm);delete mo.id;mo.event_id=id;await client.from('restart_payment_methods').insert(mo);}
+ alerts.close();alerts.toast('success','คัดลอก Event แล้ว');await loadEvents(id);
+}
+async function saveGeneral(e){
+ e.preventDefault();var f=e.currentTarget,langs=Array.from($('#languages').querySelectorAll('input:checked')).map(function(x){return x.value;});
+ if(!langs.length){notice('ต้องเปิดอย่างน้อย 1 ภาษา');return;}
+ var payload={name:f.elements.name.value.trim(),slug:slugify(f.elements.slug.value),event_code:f.elements.event_code.value.trim()||null,status:f.elements.status.value,event_date_start:f.elements.event_date_start.value||null,event_date_end:f.elements.event_date_end.value||null,registration_opens_at:iso(f.elements.registration_opens_at.value),registration_closes_at:iso(f.elements.registration_closes_at.value),location_name:f.elements.location_name.value.trim()||null,capacity:f.elements.capacity.value?Number(f.elements.capacity.value):null,description:f.elements.description.value.trim()||null,languages:langs,updated_at:new Date().toISOString()};
+ var q=await client.from('restart_events').update(payload).eq('id',current.id).select().single();if(q.error)throw q.error;current=q.data;events=events.map(function(x){return x.id===current.id?current:x;});renderAll();renderEventList();alerts.toast('success','บันทึก Event แล้ว');
+}
+async function saveFeatures(){
+ var flags={};$('#featureGrid').querySelectorAll('[data-feature]').forEach(function(x){flags[x.dataset.feature]=x.checked;});
+ var q=await client.from('restart_events').update({feature_flags:flags,updated_at:new Date().toISOString()}).eq('id',current.id).select().single();if(q.error)throw q.error;current=q.data;events=events.map(function(x){return x.id===current.id?current:x;});alerts.toast('success','บันทึกฟังก์ชันแล้ว');
+}
+async function addField(){
+ var sec=related.sections.map(function(s){return '<option value="'+s.id+'">'+esc(labelObj(s.label).th||s.section_key)+'</option>';}).join('');
+ var r=await alerts.fire({title:'เพิ่ม Field',html:'<input id="fLabel" class="swal2-input" placeholder="ชื่อ Field"><input id="fKey" class="swal2-input" placeholder="key เช่น nationality"><select id="fType" class="swal2-select"><option value="text">Text</option><option value="textarea">Textarea</option><option value="number">Number</option><option value="date">Date</option><option value="tel">Phone</option><option value="email">Email</option><option value="select">Dropdown</option><option value="radio">Radio</option><option value="checkbox">Checkbox</option><option value="file">File</option></select><select id="fSection" class="swal2-select">'+sec+'</select><label style="display:block;margin-top:12px"><input id="fRequired" type="checkbox"> บังคับกรอก</label>',showCancelButton:true,confirmButtonText:'เพิ่ม',preConfirm:function(){var label=document.getElementById('fLabel').value.trim(),key=slugify(document.getElementById('fKey').value||label).replace(/-/g,'_');if(!label||!key){window.Swal.showValidationMessage('กรุณาระบุชื่อ Field');return false;}return {label:label,key:key,type:document.getElementById('fType').value,section:document.getElementById('fSection').value,required:document.getElementById('fRequired').checked};}});
+ if(!r.isConfirmed)return;var q=await client.from('restart_form_fields').insert({event_id:current.id,section_id:r.value.section,field_key:r.value.key,field_type:r.value.type,label:{th:r.value.label},is_required:r.value.required,is_active:true,is_system:false,sort_order:(related.fields.length+1)*10});if(q.error)throw q.error;await selectEvent(current.id);alerts.toast('success','เพิ่ม Field แล้ว');
+}
+async function addOrEditCategory(id){
+ var old=related.categories.find(function(x){return x.id===id;})||{};
+ var r=await alerts.fire({title:id?'แก้ไขรุ่น':'เพิ่มรุ่นการแข่งขัน',html:
+  '<input id="cName" class="swal2-input" placeholder="ชื่อรุ่น" value="'+esc(labelObj(old.name).th||'')+'"><input id="cCode" class="swal2-input" placeholder="รหัสรุ่น" value="'+esc(old.code||'')+'">'+
+  '<input id="cDistance" type="number" step="0.01" class="swal2-input" placeholder="ระยะ KM" value="'+esc(old.distance_km==null?'':old.distance_km)+'">'+
+  '<select id="cGender" class="swal2-select"><option value="ANY">ไม่จำกัดเพศ</option><option value="MALE">ชาย</option><option value="FEMALE">หญิง</option><option value="CUSTOM">กำหนดเอง</option></select>'+
+  '<input id="cMin" type="number" class="swal2-input" placeholder="อายุขั้นต่ำ" value="'+esc(old.min_age==null?'':old.min_age)+'"><input id="cMax" type="number" class="swal2-input" placeholder="อายุสูงสุด" value="'+esc(old.max_age==null?'':old.max_age)+'">'+
+  '<input id="cPrice" type="number" class="swal2-input" placeholder="ราคาปกติ" value="'+esc(old.base_price_thb==null?'':old.base_price_thb)+'"><input id="cEarly" type="number" class="swal2-input" placeholder="Early Bird (เว้นว่างได้)" value="'+esc(old.early_bird_price_thb==null?'':old.early_bird_price_thb)+'">'+
+  '<label style="display:block;margin-top:10px"><input id="cAuto" type="checkbox" '+(old.auto_assign?'checked':'')+'> คำนวณรุ่นอัตโนมัติ</label><label style="display:block"><input id="cSelf" type="checkbox" '+(old.allow_self_select!==false?'checked':'')+'> ให้ผู้สมัครเลือกรุ่นเอง</label>',
+  didOpen:function(){document.getElementById('cGender').value=old.gender_rule||'ANY';},showCancelButton:true,confirmButtonText:'บันทึก',
+  preConfirm:function(){var name=document.getElementById('cName').value.trim(),code=document.getElementById('cCode').value.trim().toUpperCase();if(!name||!code){window.Swal.showValidationMessage('กรุณาระบุชื่อและรหัสรุ่น');return false;}return {code:code,name:{th:name},distance_km:document.getElementById('cDistance').value?Number(document.getElementById('cDistance').value):null,gender_rule:document.getElementById('cGender').value,min_age:document.getElementById('cMin').value?Number(document.getElementById('cMin').value):null,max_age:document.getElementById('cMax').value?Number(document.getElementById('cMax').value):null,base_price_thb:Number(document.getElementById('cPrice').value||0),early_bird_price_thb:document.getElementById('cEarly').value?Number(document.getElementById('cEarly').value):null,auto_assign:document.getElementById('cAuto').checked,allow_self_select:document.getElementById('cSelf').checked,is_active:true,sort_order:old.sort_order==null?(related.categories.length+1)*10:old.sort_order};}});
+ if(!r.isConfirmed)return;var q=id?await client.from('restart_race_categories').update(r.value).eq('id',id):await client.from('restart_race_categories').insert(Object.assign({event_id:current.id},r.value));if(q.error)throw q.error;await selectEvent(current.id);alerts.toast('success','บันทึกรุ่นแล้ว');
+}
+async function addOrEditPackage(id){
+ var old=related.packages.find(function(x){return x.id===id;})||{}, opts='<option value="">ทุก รุ่น</option>'+related.categories.map(function(c){return '<option value="'+c.id+'">'+esc(labelObj(c.name).th||c.code)+'</option>';}).join('');
+ var r=await alerts.fire({title:id?'แก้ไข Package':'เพิ่ม Package',html:'<input id="pName" class="swal2-input" placeholder="ชื่อ Package" value="'+esc(labelObj(old.name).th||'')+'"><input id="pCode" class="swal2-input" placeholder="รหัส Package" value="'+esc(old.code||'')+'"><select id="pCat" class="swal2-select">'+opts+'</select><select id="pMode" class="swal2-select"><option value="ADD">บวกเพิ่มจากราคารุ่น</option><option value="OVERRIDE">ใช้ราคานี้แทนราคารุ่น</option></select><input id="pPrice" type="number" class="swal2-input" placeholder="ราคา" value="'+esc(old.price_value_thb==null?'':old.price_value_thb)+'"><input id="pRunner" type="number" min="1" class="swal2-input" placeholder="จำนวนผู้แข่งขัน" value="'+esc(old.runner_count||1)+'"><input id="pFollower" type="number" min="0" class="swal2-input" placeholder="จำนวนผู้ติดตาม" value="'+esc(old.follower_count||0)+'">',didOpen:function(){document.getElementById('pCat').value=old.category_id||'';document.getElementById('pMode').value=old.price_mode||'ADD';},showCancelButton:true,confirmButtonText:'บันทึก',preConfirm:function(){var name=document.getElementById('pName').value.trim(),code=document.getElementById('pCode').value.trim().toUpperCase();if(!name||!code){window.Swal.showValidationMessage('กรุณาระบุชื่อและรหัส Package');return false;}return {category_id:document.getElementById('pCat').value||null,code:code,name:{th:name},price_mode:document.getElementById('pMode').value,price_value_thb:Number(document.getElementById('pPrice').value||0),runner_count:Number(document.getElementById('pRunner').value||1),follower_count:Number(document.getElementById('pFollower').value||0),is_active:true,sort_order:old.sort_order==null?(related.packages.length+1)*10:old.sort_order};}});
+ if(!r.isConfirmed)return;var q=id?await client.from('restart_packages').update(r.value).eq('id',id):await client.from('restart_packages').insert(Object.assign({event_id:current.id},r.value));if(q.error)throw q.error;await selectEvent(current.id);alerts.toast('success','บันทึก Package แล้ว');
+}
+async function savePayment(kind,form){
+ var old=related.payments.find(function(x){return x.kind===kind;}),payload={event_id:current.id,kind:kind,is_enabled:form.elements.is_enabled.checked};
+ if(kind==='BANK')Object.assign(payload,{label:'บัญชีธนาคาร',bank_name:form.elements.bank_name.value.trim()||null,account_name:form.elements.account_name.value.trim()||null,account_number:form.elements.account_number.value.trim()||null,qr_enabled:false,sort_order:10});
+ else Object.assign(payload,{label:'PromptPay',promptpay_type:form.elements.promptpay_type.value,promptpay_id:form.elements.promptpay_id.value.trim()||null,qr_enabled:form.elements.qr_enabled.checked,sort_order:20});
+ var q=old?await client.from('restart_payment_methods').update(payload).eq('id',old.id):await client.from('restart_payment_methods').insert(payload);if(q.error)throw q.error;await selectEvent(current.id);alerts.toast('success','บันทึกการชำระเงินแล้ว');
+}
+async function saveInstallment(){
+ var count=Math.max(2,Math.min(12,Number($('#installmentCount').value)||3)),first=Number($('#firstPayment').value||0),plan=related.plans[0],q;
+ if(plan)q=await client.from('restart_installment_plans').update({installment_count:count,first_payment_thb:first,is_active:true}).eq('id',plan.id).select().single();
+ else q=await client.from('restart_installment_plans').insert({event_id:current.id,name:{th:'แผนผ่อนหลัก'},installment_count:count,first_payment_thb:first,is_active:true,priority:100}).select().single();
+ if(q.error)throw q.error;plan=q.data;
+ for(var no=1;no<=count;no++){var mode=document.querySelector('[data-step-mode="'+no+'"]').value,amount=document.querySelector('[data-step-amount="'+no+'"]').value,due=document.querySelector('[data-step-due="'+no+'"]').value;var existing=(related.steps||[]).find(function(s){return s.installment_no===no;});var row={plan_id:plan.id,installment_no:no,amount_mode:mode,amount_value:amount===''?null:Number(amount),due_at:iso(due)};var sq=existing?await client.from('restart_installment_steps').update(row).eq('id',existing.id):await client.from('restart_installment_steps').insert(row);if(sq.error)throw sq.error;}
+ var del=await client.from('restart_installment_steps').delete().eq('plan_id',plan.id).gt('installment_no',count);if(del.error)throw del.error;await selectEvent(current.id);alerts.toast('success','บันทึกแผนผ่อนแล้ว');
+}
+async function uploadImage(input,kind){
+ if(!input.files||!input.files[0])return null;var file=input.files[0];if(file.size>5*1024*1024)throw new Error('รูปต้องไม่เกิน 5 MB');
+ var ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=current.id+'/'+kind.toLowerCase()+'-'+Date.now()+'.'+ext;
+ var up=await client.storage.from('restart-event-media').upload(path,file,{cacheControl:'3600',upsert:false});if(up.error)throw up.error;
+ return client.storage.from('restart-event-media').getPublicUrl(path).data.publicUrl;
+}
+async function saveTheme(e){
+ e.preventDefault();alerts.loading('กำลังบันทึก Theme…');var theme=Object.assign({},current.theme||{});Object.keys(THEME_KEYS).forEach(function(k){theme[k]=document.querySelector('#themeColors [name="'+k+'"]').value;});
+ var logo=await uploadImage($('#logoFile'),'LOGO'),banner=await uploadImage($('#bannerFile'),'BANNER'),payload={theme:theme,updated_at:new Date().toISOString()};if(logo)payload.logo_url=logo;if(banner)payload.banner_url=banner;
+ var q=await client.from('restart_events').update(payload).eq('id',current.id).select().single();if(q.error){alerts.close();throw q.error;}current=q.data;events=events.map(function(x){return x.id===current.id?current:x;});alerts.close();renderTheme();alerts.toast('success','บันทึก Theme แล้ว');
+}
+async function remove(table,id,title){
+ var r=await alerts.fire({icon:'warning',title:title,showCancelButton:true,confirmButtonText:'ลบ',cancelButtonText:'ยกเลิก'});if(!r.isConfirmed)return;var q=await client.from(table).delete().eq('id',id);if(q.error)throw q.error;await selectEvent(current.id);alerts.toast('success','ลบแล้ว');
+}
+
+$('#newEvent').addEventListener('click',function(){createEvent().catch(function(e){alerts.close();notice(e.message);});});
+$('#duplicateEvent').addEventListener('click',function(){duplicateEvent().catch(function(e){alerts.close();notice(e.message);});});
+$('#refresh').addEventListener('click',function(){loadEvents(current&&current.id).catch(function(e){notice(e.message);});});
+$('#logout').addEventListener('click',async function(){await client.auth.signOut();location.href='admin.html';});
+$('#eventList').addEventListener('click',function(e){var b=e.target.closest('[data-event]');if(b)selectEvent(b.dataset.event).catch(function(x){notice(x.message);});});
+$('#tabs').addEventListener('click',function(e){var b=e.target.closest('[data-tab]');if(!b)return;$('#tabs').querySelectorAll('button').forEach(function(x){x.classList.toggle('active',x===b);});document.querySelectorAll('.tab-page').forEach(function(x){x.classList.add('hidden');});$('#'+b.dataset.tab+'Tab').classList.remove('hidden');});
+$('#generalForm').addEventListener('submit',function(e){saveGeneral(e).catch(function(x){notice(x.message);});});
+$('#saveFeatures').addEventListener('click',function(){saveFeatures().catch(function(x){notice(x.message);});});
+$('#enableAll').addEventListener('click',function(){$('#featureGrid').querySelectorAll('input').forEach(function(x){x.checked=true;});});
+$('#disableAll').addEventListener('click',function(){$('#featureGrid').querySelectorAll('input').forEach(function(x){x.checked=false;});});
+$('#addField').addEventListener('click',function(){addField().catch(function(x){notice(x.message);});});
+$('#fieldList').addEventListener('change',async function(e){try{if(e.target.dataset.fieldActive){var q=await client.from('restart_form_fields').update({is_active:e.target.checked}).eq('id',e.target.dataset.fieldActive);if(q.error)throw q.error;}if(e.target.dataset.fieldRequired){var q2=await client.from('restart_form_fields').update({is_required:e.target.checked}).eq('id',e.target.dataset.fieldRequired);if(q2.error)throw q2.error;}alerts.toast('success','บันทึก Field แล้ว');}catch(x){notice(x.message);}});
+$('#fieldList').addEventListener('click',function(e){var b=e.target.closest('[data-delete-field]');if(b)remove('restart_form_fields',b.dataset.deleteField,'ลบ Field นี้?').catch(function(x){notice(x.message);});});
+$('#addCategory').addEventListener('click',function(){addOrEditCategory().catch(function(x){notice(x.message);});});
+$('#categoryList').addEventListener('click',function(e){var ed=e.target.closest('[data-edit-category]'),del=e.target.closest('[data-delete-category]');if(ed)addOrEditCategory(ed.dataset.editCategory).catch(function(x){notice(x.message);});if(del)remove('restart_race_categories',del.dataset.deleteCategory,'ลบรุ่นการแข่งขันนี้?').catch(function(x){notice(x.message);});});
+$('#addPackage').addEventListener('click',function(){addOrEditPackage().catch(function(x){notice(x.message);});});
+$('#packageList').addEventListener('click',function(e){var ed=e.target.closest('[data-edit-package]'),del=e.target.closest('[data-delete-package]');if(ed)addOrEditPackage(ed.dataset.editPackage).catch(function(x){notice(x.message);});if(del)remove('restart_packages',del.dataset.deletePackage,'ลบ Package นี้?').catch(function(x){notice(x.message);});});
+$('#bankForm').addEventListener('submit',function(e){e.preventDefault();savePayment('BANK',e.currentTarget).catch(function(x){notice(x.message);});});
+$('#promptpayForm').addEventListener('submit',function(e){e.preventDefault();savePayment('PROMPTPAY',e.currentTarget).catch(function(x){notice(x.message);});});
+$('#installmentCount').addEventListener('input',renderInstallmentSteps);
+$('#saveInstallment').addEventListener('click',function(){saveInstallment().catch(function(x){notice(x.message);});});
+$('#themeForm').addEventListener('submit',function(e){saveTheme(e).catch(function(x){alerts.close();notice(x.message);});});
+
+document.addEventListener('DOMContentLoaded',function(){ensureAuth().then(function(){return loadEvents();}).catch(function(e){$('#message').textContent=e.message;$('#message').classList.remove('hidden');});});
+})();
+</script>
+</body>
+</html>
