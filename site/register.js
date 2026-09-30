@@ -41,7 +41,7 @@
     const root=document.documentElement;
     const map={primary:'--event-primary',secondary:'--event-secondary',background:'--event-bg',surface:'--event-surface',text:'--event-text',muted:'--event-muted',accent:'--event-accent'};
     Object.keys(map).forEach(k=>{if(th[k])root.style.setProperty(map[k],th[k]);});
-    document.title=cfg.event.name+' · RESTART';
+    document.title=cfg.event.name+' · RESTART';$('#payNextLink').href='payment.html?event='+encodeURIComponent(eventSlug);
   }
   function isOpen(){
     if(cfg.event.status!=='OPEN') return false;
