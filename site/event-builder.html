@@ -337,17 +337,35 @@ async function createEvent(){
  alerts.close();alerts.toast('success','สร้าง Event แล้ว');await loadEvents(ev.id);
 }
 async function duplicateEvent(){
- if(!current)return; var res=await alerts.fire({icon:'question',title:'คัดลอก Event?',text:'จะคัดลอกการตั้งค่า Form รุ่น Package Payment และ Theme จาก Event นี้',showCancelButton:true,confirmButtonText:'คัดลอก',cancelButtonText:'ยกเลิก'});if(!res.isConfirmed)return;
+ if(!current)return;var res=await alerts.fire({icon:'question',title:'คัดลอก Event?',text:'คัดลอก Form ภาษา รุ่น ราคา Package วิธีชำระ แผนผ่อน และ Theme ทั้งหมด โดย Event ใหม่จะเป็น Draft',showCancelButton:true,confirmButtonText:'คัดลอก',cancelButtonText:'ยกเลิก'});if(!res.isConfirmed)return;
  alerts.loading('กำลังคัดลอก Event…');
  var copy=Object.assign({},current);delete copy.id;delete copy.created_at;delete copy.updated_at;copy.name=current.name+' COPY';copy.slug=(current.slug+'-copy-'+Date.now().toString().slice(-6)).slice(0,80);copy.status='DRAFT';copy.created_by=(await client.auth.getUser()).data.user.id;
  var n=await client.from('restart_events').insert(copy).select().single();if(n.error)throw n.error;var id=n.data.id;
+
+ if((related.translations||[]).length){
+  var tr=(related.translations||[]).map(function(x){return {event_id:id,language:x.language,name:x.name,description:x.description,location_name:x.location_name};});
+  var trq=await client.from('restart_event_translations').insert(tr);if(trq.error)throw trq.error;
+ }
+
  var secMap={};
  for(var i=0;i<related.sections.length;i++){var s=related.sections[i],si=await client.from('restart_form_sections').insert({event_id:id,section_key:s.section_key,label:s.label,description:s.description,sort_order:s.sort_order,is_active:s.is_active}).select().single();if(si.error)throw si.error;secMap[s.id]=si.data.id;}
- for(var j=0;j<related.fields.length;j++){var f=related.fields[j];await client.from('restart_form_fields').insert({event_id:id,section_id:secMap[f.section_id]||null,field_key:f.field_key,field_type:f.field_type,label:f.label,placeholder:f.placeholder,options:f.options,validation:f.validation,is_required:f.is_required,is_active:f.is_active,is_system:f.is_system,sort_order:f.sort_order});}
- for(var c=0;c<related.categories.length;c++){var rc=related.categories[c],obj=Object.assign({},rc);delete obj.id;obj.event_id=id;await client.from('restart_race_categories').insert(obj);}
- for(var p=0;p<related.packages.length;p++){var rp=related.packages[p],po=Object.assign({},rp);delete po.id;po.event_id=id;po.category_id=null;await client.from('restart_packages').insert(po);}
- for(var m=0;m<related.payments.length;m++){var pm=related.payments[m],mo=Object.assign({},pm);delete mo.id;mo.event_id=id;await client.from('restart_payment_methods').insert(mo);}
- alerts.close();alerts.toast('success','คัดลอก Event แล้ว');await loadEvents(id);
+ for(var j=0;j<related.fields.length;j++){var f=related.fields[j],fq=await client.from('restart_form_fields').insert({event_id:id,section_id:secMap[f.section_id]||null,field_key:f.field_key,field_type:f.field_type,label:f.label,placeholder:f.placeholder,options:f.options,validation:f.validation,is_required:f.is_required,is_active:f.is_active,is_system:f.is_system,sort_order:f.sort_order});if(fq.error)throw fq.error;}
+
+ var catMap={};
+ for(var ci=0;ci<related.categories.length;ci++){var rc=related.categories[ci],co=Object.assign({},rc);delete co.id;co.event_id=id;var cq=await client.from('restart_race_categories').insert(co).select().single();if(cq.error)throw cq.error;catMap[rc.id]=cq.data.id;}
+
+ var pkgMap={};
+ for(var pi=0;pi<related.packages.length;pi++){var rp=related.packages[pi],po=Object.assign({},rp);delete po.id;po.event_id=id;po.category_id=rp.category_id?catMap[rp.category_id]||null:null;var pq=await client.from('restart_packages').insert(po).select().single();if(pq.error)throw pq.error;pkgMap[rp.id]=pq.data.id;}
+
+ for(var mi=0;mi<related.payments.length;mi++){var pm=related.payments[mi],mo=Object.assign({},pm);delete mo.id;mo.event_id=id;var mq=await client.from('restart_payment_methods').insert(mo);if(mq.error)throw mq.error;}
+
+ for(var li=0;li<related.plans.length;li++){
+  var op=related.plans[li],np=Object.assign({},op);delete np.id;np.event_id=id;np.category_id=op.category_id?catMap[op.category_id]||null:null;np.package_id=op.package_id?pkgMap[op.package_id]||null:null;
+  var ipq=await client.from('restart_installment_plans').insert(np).select().single();if(ipq.error)throw ipq.error;
+  var oldSteps=await client.from('restart_installment_steps').select('*').eq('plan_id',op.id).order('installment_no');if(oldSteps.error)throw oldSteps.error;
+  if(oldSteps.data&&oldSteps.data.length){var stepRows=oldSteps.data.map(function(st){return {plan_id:ipq.data.id,installment_no:st.installment_no,amount_mode:st.amount_mode,amount_value:st.amount_value,due_at:st.due_at};});var sq=await client.from('restart_installment_steps').insert(stepRows);if(sq.error)throw sq.error;}
+ }
+ alerts.close();alerts.toast('success','คัดลอก Event และการตั้งค่าทั้งหมดแล้ว');await loadEvents(id);
 }
 async function saveGeneral(e){
  e.preventDefault();var f=e.currentTarget,langs=Array.from($('#languages').querySelectorAll('input:checked')).map(function(x){return x.value;});
