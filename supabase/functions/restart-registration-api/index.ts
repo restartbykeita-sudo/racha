@@ -55,15 +55,17 @@ async function loadEvent(slug: string, allowDraft = false) {
 async function publicConfig(slug: string) {
   const event = await loadEvent(slug);
   const eventId = String(event.id);
-  const [sections, fields, categories, packages, methods, plans] = await Promise.all([
+  const [sections, fields, categories, packages, methods, plans, translations, media] = await Promise.all([
     db.from('restart_form_sections').select('*').eq('event_id', eventId).eq('is_active', true).order('sort_order'),
     db.from('restart_form_fields').select('*').eq('event_id', eventId).eq('is_active', true).order('sort_order'),
     db.from('restart_race_categories').select('*').eq('event_id', eventId).eq('is_active', true).order('sort_order'),
     db.from('restart_packages').select('*').eq('event_id', eventId).eq('is_active', true).order('sort_order'),
     db.from('restart_payment_methods').select('*').eq('event_id', eventId).eq('is_enabled', true).order('sort_order'),
     db.from('restart_installment_plans').select('*').eq('event_id', eventId).eq('is_active', true).order('priority', { ascending: false }),
+    db.from('restart_event_translations').select('language,name,description,location_name').eq('event_id', eventId),
+    db.from('restart_event_media').select('id,media_type,url,alt_text,sort_order').eq('event_id', eventId).eq('is_active', true).order('sort_order'),
   ]);
-  for (const result of [sections, fields, categories, packages, methods, plans]) if (result.error) fail(503, 'โหลดการตั้งค่า Event ไม่สำเร็จ');
+  for (const result of [sections, fields, categories, packages, methods, plans, translations, media]) if (result.error) fail(503, 'โหลดการตั้งค่า Event ไม่สำเร็จ');
   const planIds = (plans.data || []).map(p => p.id);
   const steps = planIds.length
     ? await db.from('restart_installment_steps').select('*').in('plan_id', planIds).order('installment_no')
@@ -87,6 +89,8 @@ async function publicConfig(slug: string) {
     payment_methods: methods.data || [],
     installment_plans: plans.data || [],
     installment_steps: steps.data || [],
+    translations: translations.data || [],
+    media: media.data || [],
     server_now: new Date().toISOString(),
   };
 }
