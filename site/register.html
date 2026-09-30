@@ -47,31 +47,31 @@
     <form id="registrationForm" class="stack" novalidate>
       <div class="stepper"><span>1 รุ่น / Package</span><span>2 ข้อมูลผู้สมัคร</span><span>3 ประกัน</span><span>4 ชำระเงิน</span></div>
       <section id="categorySection" class="panel hidden">
-        <div class="section-heading"><b>01</b><div><h2>รุ่นการแข่งขัน</h2><p>เลือกรุ่นที่สมัคร</p></div></div>
+        <div class="section-heading"><b>01</b><div><h2 id="categoryTitle">รุ่นการแข่งขัน</h2><p id="categoryHint">เลือกรุ่นที่สมัคร</p></div></div>
         <div id="categories" class="selection-grid"></div>
       </section>
       <section id="packageSection" class="panel hidden">
-        <div class="section-heading"><b>02</b><div><h2>Package</h2><p>เลือก Package ที่ต้องการ</p></div></div>
+        <div class="section-heading"><b>02</b><div><h2 id="packageTitle">Package</h2><p id="packageHint">เลือก Package ที่ต้องการ</p></div></div>
         <div id="packages" class="selection-grid"></div>
       </section>
       <section class="panel">
-        <div class="section-heading"><b>03</b><div><h2>ข้อมูลผู้สมัคร</h2><p>กรอกข้อมูลให้ตรงกับบัตรประชาชนหรือ Passport</p></div></div>
+        <div class="section-heading"><b>03</b><div><h2 id="participantTitle">ข้อมูลผู้สมัคร</h2><p id="participantHint">กรอกข้อมูลให้ตรงกับบัตรประชาชนหรือ Passport</p></div></div>
         <div id="runners" class="stack"></div>
       </section>
       <section id="insuranceSection" class="panel hidden">
-        <div class="section-heading"><b>04</b><div><h2>ข้อมูลประกัน / ผู้รับผลประโยชน์</h2><p>เพิ่มผู้รับผลประโยชน์ได้หลายคน โดยรวมเปอร์เซ็นต์ตามเงื่อนไขของ Event</p></div></div>
+        <div class="section-heading"><b>04</b><div><h2 id="insuranceTitle">ข้อมูลประกัน / ผู้รับผลประโยชน์</h2><p id="insuranceHint">เพิ่มผู้รับผลประโยชน์ได้หลายคน โดยรวมเปอร์เซ็นต์ตามเงื่อนไขของ Event</p></div></div>
         <div id="beneficiaryGroups" class="stack"></div>
       </section>
       <section class="panel">
-        <div class="section-heading"><b>05</b><div><h2>การชำระเงิน</h2><p>เลือกชำระเต็มหรือผ่อน ตามที่ Event เปิดใช้งาน</p></div></div>
+        <div class="section-heading"><b>05</b><div><h2 id="paymentTitle">การชำระเงิน</h2><p id="paymentHint">เลือกชำระเต็มหรือผ่อน ตามที่ Event เปิดใช้งาน</p></div></div>
         <div id="paymentModes" class="choice-row"></div>
         <div id="schedule" class="schedule"></div>
         <div class="payment-summary">
-          <span class="muted">ยอดที่ต้องชำระตอนนี้</span><div id="dueNow" class="payment-total">0 ฿</div>
+          <span id="dueLabel" class="muted">ยอดที่ต้องชำระตอนนี้</span><div id="dueNow" class="payment-total">0 ฿</div>
         </div>
         <div id="paymentMethods" class="stack" style="margin-top:16px"></div>
-        <label id="slipField" class="field" style="margin-top:16px"><span>แนบสลิปชำระเงิน</span><input id="slip" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label>
-        <label id="consentRow" class="consent"><input id="consent" type="checkbox"><span>ฉันยินยอมให้ใช้ข้อมูลเพื่อการสมัครและจัดการแข่งขันตามเงื่อนไขของ Event</span></label>
+        <label id="slipField" class="field" style="margin-top:16px"><span id="slipLabel">แนบสลิปชำระเงิน</span><input id="slip" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label>
+        <label id="consentRow" class="consent"><input id="consent" type="checkbox"><span id="consentLabel">ฉันยินยอมให้ใช้ข้อมูลเพื่อการสมัครและจัดการแข่งขันตามเงื่อนไขของ Event</span></label>
         <button id="submitBtn" class="primary" type="submit">ส่งใบสมัคร</button>
       </section>
     </form>
