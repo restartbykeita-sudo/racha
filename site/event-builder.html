@@ -59,7 +59,7 @@
           <div class="inline-actions"><button id="refresh" class="small-button" type="button">รีเฟรช</button><button id="duplicateEvent" class="small-button" type="button">คัดลอก Event</button></div>
         </div>
         <nav class="builder-tabs" id="tabs">
-          <button data-tab="general" class="active">ข้อมูล Event</button>
+          <button data-tab="general" class="active">ข้อมูล Event</button><button data-tab="registrations">ใบสมัคร / สลิป</button>
           <button data-tab="features">เปิด–ปิดฟังก์ชัน</button>
           <button data-tab="fields">แบบฟอร์ม</button>
           <button data-tab="categories">รุ่นการแข่งขัน</button>
@@ -67,7 +67,7 @@
           <button data-tab="payments">การชำระเงิน</button>
           <button data-tab="theme">Theme / ภาพ</button>
         </nav>
-        <div id="generalTab" class="tab-page">
+        <div id="registrationsTab" class="tab-page hidden"><div class="toolbar"><div><h2 style="margin:0">ใบสมัครและการชำระเงิน</h2><p class="muted">ดูผู้สมัครทุกคน ตรวจสลิป และสถานะผ่อนของ Event นี้</p></div><label class="field" style="min-width:260px"><span>ค้นหา</span><input id="registrationSearch" type="search" placeholder="ชื่อ / เลขเอกสาร / รหัสสมัคร"></label></div><div id="registrationMetrics" class="metrics" style="margin-bottom:16px"></div><div class="table-wrap"><table class="data-table"><thead><tr><th>ผู้สมัคร</th><th>รุ่น / Package</th><th>ยอดรวม</th><th>สถานะ</th><th>งวด / สลิป</th></tr></thead><tbody id="registrationRowsGeneric"></tbody></table></div></div><div id="generalTab" class="tab-page">
           <form id="generalForm" class="admin-form">
             <label class="field"><span>ชื่อ Event</span><input name="name" required></label>
             <label class="field"><span>Slug URL</span><input name="slug" pattern="[a-z0-9][a-z0-9-]{1,80}" required></label>
@@ -199,11 +199,14 @@ async function selectEvent(id){
   client.from('restart_race_categories').select('*').eq('event_id',id).order('sort_order'),
   client.from('restart_packages').select('*').eq('event_id',id).order('sort_order'),
   client.from('restart_payment_methods').select('*').eq('event_id',id).order('sort_order'),
-  client.from('restart_installment_plans').select('*').eq('event_id',id).order('priority',{ascending:false})
+  client.from('restart_installment_plans').select('*').eq('event_id',id).order('priority',{ascending:false}),
+  client.from('restart_registrations').select('*').eq('event_id',id).order('created_at',{ascending:false}),
+  client.from('restart_participants').select('*').eq('event_id',id).order('runner_index')
  ]);
  data.forEach(function(x){if(x.error)throw x.error;});
- related={sections:data[0].data||[],fields:data[1].data||[],categories:data[2].data||[],packages:data[3].data||[],payments:data[4].data||[],plans:data[5].data||[]};
+ related={sections:data[0].data||[],fields:data[1].data||[],categories:data[2].data||[],packages:data[3].data||[],payments:data[4].data||[],plans:data[5].data||[],registrations:data[6].data||[],participants:data[7].data||[],schedules:[],attempts:[]};
  await loadSteps();
+ await loadRegistrationPayments();
  renderAll();
 }
 async function loadSteps(){
@@ -212,7 +215,48 @@ async function loadSteps(){
  var q=await client.from('restart_installment_steps').select('*').eq('plan_id',related.plans[0].id).order('installment_no');
  if(q.error)throw q.error; related.steps=q.data||[];
 }
-function renderAll(){renderGeneral();renderFeatures();renderFields();renderCategories();renderPackages();renderPayments();renderTheme();}
+async function loadRegistrationPayments(){
+ related.schedules=[];related.attempts=[];
+ var ids=(related.registrations||[]).map(function(r){return r.id;});
+ if(!ids.length)return;
+ var s=await client.from('restart_payment_schedule').select('*').in('registration_id',ids).order('installment_no');
+ if(s.error)throw s.error;related.schedules=s.data||[];
+ var scheduleIds=related.schedules.map(function(x){return x.id;});
+ if(!scheduleIds.length)return;
+ var a=await client.from('restart_payment_attempts').select('*').in('schedule_id',scheduleIds).order('submitted_at',{ascending:false});
+ if(a.error)throw a.error;related.attempts=a.data||[];
+}
+function renderAll(){renderGeneral();renderRegistrations();renderFeatures();renderFields();renderCategories();renderPackages();renderPayments();renderTheme();}
+function renderRegistrations(){
+ var q=($('#registrationSearch')&&$('#registrationSearch').value||'').trim().toLowerCase();
+ var cat={};(related.categories||[]).forEach(function(x){cat[x.id]=labelObj(x.name).th||x.code;});
+ var pkg={};(related.packages||[]).forEach(function(x){pkg[x.id]=labelObj(x.name).th||x.code;});
+ var regs=(related.registrations||[]).map(function(r){
+  var people=(related.participants||[]).filter(function(p){return p.registration_id===r.id;});
+  var schedules=(related.schedules||[]).filter(function(s){return s.registration_id===r.id;}).sort(function(a,b){return a.installment_no-b.installment_no;});
+  var paid=schedules.filter(function(s){return s.status==='PAID';}).reduce(function(n,s){return n+Number(s.amount_due_thb||0);},0);
+  return Object.assign({},r,{people:people,schedules:schedules,paid:paid});
+ }).filter(function(r){
+  if(!q)return true;
+  var hay=[r.registration_code].concat(r.people.flatMap(function(p){return [p.first_name,p.last_name,p.id_document,p.phone];})).join(' ').toLowerCase();
+  return hay.includes(q);
+ });
+ var allRegs=related.registrations||[];
+ var pending=(related.attempts||[]).filter(function(a){return a.status==='PENDING_REVIEW';}).length;
+ var totalValue=allRegs.reduce(function(n,r){return n+Number(r.total_amount_thb||0);},0);
+ var paidValue=(related.schedules||[]).filter(function(s){return s.status==='PAID';}).reduce(function(n,s){return n+Number(s.amount_due_thb||0);},0);
+ $('#registrationMetrics').innerHTML=[['ใบสมัคร',allRegs.length],['รอตรวจสลิป',pending],['ยอดสมัคร',money(totalValue)],['รับแล้ว',money(paidValue)]].map(function(x){return '<div class="metric"><small>'+esc(x[0])+'</small><strong>'+esc(x[1])+'</strong></div>';}).join('');
+ $('#registrationRowsGeneric').innerHTML=regs.length?regs.map(function(r){
+  var personHtml=r.people.map(function(p){return '<strong>'+esc(p.first_name+' '+p.last_name)+'</strong><br><small>'+esc(p.id_document)+(p.phone?' · '+esc(p.phone):'')+'</small>';}).join('<hr style="border:0;border-top:1px solid #493d59">');
+  var scheduleHtml=r.schedules.map(function(s){
+   var attempts=(related.attempts||[]).filter(function(a){return a.schedule_id===s.id;});
+   var pendingAttempts=attempts.filter(function(a){return a.status==='PENDING_REVIEW';});
+   var buttons=pendingAttempts.map(function(a){return '<div class="inline-actions" style="margin-top:6px"><button type="button" class="small-button" data-generic-slip="'+esc(a.id)+'">ดูสลิป</button><button type="button" class="small-button" data-generic-review="'+esc(a.id)+'" data-approve="true">อนุมัติ</button><button type="button" class="small-button mini-danger" data-generic-review="'+esc(a.id)+'" data-approve="false">ปฏิเสธ</button></div>';}).join('');
+   return '<div style="margin-bottom:8px">งวด '+s.installment_no+' · '+money(s.amount_due_thb)+' · <span class="pill '+esc(s.status)+'">'+esc(s.status)+'</span>'+buttons+'</div>';
+  }).join('')||'—';
+  return '<tr><td>'+personHtml+'<br><small>'+esc(r.registration_code)+'</small></td><td>'+esc(cat[r.category_id]||'—')+'<br><small>'+esc(pkg[r.package_id]||'—')+'</small></td><td>'+money(r.total_amount_thb)+'<br><small>รับแล้ว '+money(r.paid)+'</small></td><td><span class="pill '+esc(r.status)+'">'+esc(r.status)+'</span></td><td>'+scheduleHtml+'</td></tr>';
+ }).join(''):'<tr><td colspan="5">ยังไม่มีใบสมัคร</td></tr>';
+}
 function renderGeneral(){
  var f=$('#generalForm'), names=['name','slug','event_code','status','event_date_start','event_date_end','location_name','capacity','description'];
  names.forEach(function(n){f.elements[n].value=current[n]==null?'':current[n];});
@@ -370,6 +414,34 @@ $('#refresh').addEventListener('click',function(){loadEvents(current&&current.id
 $('#logout').addEventListener('click',async function(){await client.auth.signOut();location.href='admin.html';});
 $('#eventList').addEventListener('click',function(e){var b=e.target.closest('[data-event]');if(b)selectEvent(b.dataset.event).catch(function(x){notice(x.message);});});
 $('#tabs').addEventListener('click',function(e){var b=e.target.closest('[data-tab]');if(!b)return;$('#tabs').querySelectorAll('button').forEach(function(x){x.classList.toggle('active',x===b);});document.querySelectorAll('.tab-page').forEach(function(x){x.classList.add('hidden');});$('#'+b.dataset.tab+'Tab').classList.remove('hidden');});
+$('#registrationSearch').addEventListener('input',renderRegistrations);
+$('#registrationRowsGeneric').addEventListener('click',async function(e){
+ var slip=e.target.closest('[data-generic-slip]'),review=e.target.closest('[data-generic-review]');
+ try{
+  if(slip){
+   var a=(related.attempts||[]).find(function(x){return x.id===slip.dataset.genericSlip;});
+   if(!a||!a.slip_path)throw new Error('ไม่พบไฟล์สลิป');
+   var signed=await client.storage.from('restart-slips').createSignedUrl(a.slip_path,120);
+   if(signed.error)throw signed.error;
+   var url=signed.data.signedUrl;
+   await alerts.fire({title:'สลิปชำระเงิน',html:a.slip_path.toLowerCase().endsWith('.pdf')?'<iframe src="'+esc(url)+'" style="width:min(820px,80vw);height:70vh;border:0"></iframe>':'<img src="'+esc(url)+'" style="max-width:100%;max-height:70vh" alt="สลิป">',width:'min(900px,94vw)',confirmButtonText:'ปิด'});
+  }
+  if(review){
+   var approve=review.dataset.approve==='true',note='';
+   if(approve){
+    var ok=await alerts.fire({icon:'question',title:'อนุมัติสลิป?',text:'ตรวจสอบยอดเงินเข้าบัญชีจริงแล้วหรือไม่',showCancelButton:true,confirmButtonText:'อนุมัติ',cancelButtonText:'ยกเลิก'});
+    if(!ok.isConfirmed)return;
+   }else{
+    var no=await alerts.fire({icon:'warning',title:'ปฏิเสธสลิป',input:'textarea',inputLabel:'เหตุผล',inputValidator:function(v){return !v||!v.trim()?'กรุณาระบุเหตุผล':undefined;},showCancelButton:true,confirmButtonText:'ปฏิเสธ',cancelButtonText:'ยกเลิก'});
+    if(!no.isConfirmed)return;note=no.value.trim();
+   }
+   alerts.loading('กำลังบันทึกผลตรวจ…');
+   var rpc=await client.rpc('restart_admin_review_payment',{p_attempt_id:review.dataset.genericReview,p_approve:approve,p_note:note||null});
+   if(rpc.error)throw rpc.error;
+   await selectEvent(current.id);alerts.close();alerts.toast('success',approve?'อนุมัติสลิปแล้ว':'ปฏิเสธสลิปแล้ว');
+  }
+ }catch(x){alerts.close();notice(x.message);}
+});
 $('#generalForm').addEventListener('submit',function(e){saveGeneral(e).catch(function(x){notice(x.message);});});
 $('#saveFeatures').addEventListener('click',function(){saveFeatures().catch(function(x){notice(x.message);});});
 $('#enableAll').addEventListener('click',function(){$('#featureGrid').querySelectorAll('input').forEach(function(x){x.checked=true;});});
